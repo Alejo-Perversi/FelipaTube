@@ -1,2 +1,3 @@
-# repoSeminario
-Repositorio para proyecto sobre integración entre aplicación para PNGTubers y plataformas de streaming
+# PNGTuber Twitch App
+
+App de escritorio con reacciones automáticas a eventos de Twitch.
