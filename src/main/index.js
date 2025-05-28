@@ -55,8 +55,12 @@ app.whenReady().then(() => {
   const mainWindow = createWindow()
 
   // Twitch connection handlers
-  ipcMain.handle('twitch:connect', async (_, { channel, accessToken }) => {
-    return await twitchService.connect(channel, accessToken)
+  ipcMain.handle('twitch:initiateAuth', async () => {
+    return await twitchService.initiateAuth()
+  })
+
+  ipcMain.handle('twitch:connect', async () => {
+    return await twitchService.connect()
   })
 
   ipcMain.handle('twitch:disconnect', async () => {

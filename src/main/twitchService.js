@@ -1,5 +1,7 @@
 import tmi from 'tmi.js'
-import { ipcMain } from 'electron'
+import { ipcMain, BrowserWindow } from 'electron'
+import { TWITCH_CONFIG } from './config'
+import axios from 'axios'
 // import { TWITCH_CONFIG } from './config'
 
 class TwitchService {
@@ -7,14 +9,141 @@ class TwitchService {
     this.client = null
     this.isConnected = false
     this.channel = ''
+    this.accessToken = null
+    this.refreshToken = null
+    this.userInfo = null
   }
 
-  async connect(channel, accessToken) {
+  async initiateAuth() {
+    console.log('Iniciando proceso de autenticación...')
+    const authWindow = new BrowserWindow({
+      width: 800,
+      height: 600,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true
+      },
+      show: false
+    })
+
+    const scopes = TWITCH_CONFIG.scopes.join(' ')
+    const authUrl = `https://id.twitch.tv/oauth2/authorize?client_id=${TWITCH_CONFIG.clientId}&redirect_uri=${encodeURIComponent(TWITCH_CONFIG.redirectUri)}&response_type=code&scope=${encodeURIComponent(scopes)}`
+
+    console.log('URL de autenticación:', authUrl)
+
+    return new Promise((resolve, reject) => {
+      // Mostrar la ventana cuando esté lista
+      authWindow.once('ready-to-show', () => {
+        authWindow.show()
+      })
+
+      // Manejar la navegación
+      authWindow.webContents.on('will-navigate', async (event, url) => {
+        console.log('Navegando a:', url)
+        if (url.startsWith(TWITCH_CONFIG.redirectUri)) {
+          const code = new URL(url).searchParams.get('code')
+          if (code) {
+            console.log('Código de autorización recibido')
+            try {
+              const tokenResponse = await this.exchangeCodeForToken(code)
+              this.accessToken = tokenResponse.access_token
+              this.refreshToken = tokenResponse.refresh_token
+
+              console.log('Tokens obtenidos exitosamente')
+
+              // Obtener información del usuario
+              await this.fetchUserInfo()
+              console.log('Información del usuario obtenida:', this.userInfo.login)
+
+              authWindow.close()
+              resolve({
+                accessToken: this.accessToken,
+                refreshToken: this.refreshToken,
+                userInfo: this.userInfo
+              })
+            } catch (error) {
+              console.error('Error al intercambiar el código por tokens:', error)
+              reject(error)
+            }
+          }
+        }
+      })
+
+      // Manejar errores de carga
+      authWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+        console.error('Error al cargar la página:', errorCode, errorDescription)
+        reject(new Error(`Error al cargar la página: ${errorDescription}`))
+      })
+
+      // Manejar el cierre de la ventana
+      authWindow.on('closed', () => {
+        console.log('Ventana de autenticación cerrada')
+        // En lugar de rechazar la promesa, la resolvemos con null
+        resolve(null)
+      })
+
+      // Cargar la URL de autenticación
+      authWindow.loadURL(authUrl).catch((error) => {
+        console.error('Error al cargar la URL de autenticación:', error)
+        reject(error)
+      })
+    })
+  }
+
+  async exchangeCodeForToken(code) {
+    const response = await axios.post('https://id.twitch.tv/oauth2/token', null, {
+      params: {
+        client_id: TWITCH_CONFIG.clientId,
+        client_secret: TWITCH_CONFIG.clientSecret,
+        code,
+        grant_type: 'authorization_code',
+        redirect_uri: TWITCH_CONFIG.redirectUri
+      }
+    })
+    return response.data
+  }
+
+  async refreshAccessToken() {
+    if (!this.refreshToken) {
+      throw new Error('No refresh token available')
+    }
+
+    const response = await axios.post('https://id.twitch.tv/oauth2/token', null, {
+      params: {
+        client_id: TWITCH_CONFIG.clientId,
+        client_secret: TWITCH_CONFIG.clientSecret,
+        grant_type: 'refresh_token',
+        refresh_token: this.refreshToken
+      }
+    })
+
+    this.accessToken = response.data.access_token
+    this.refreshToken = response.data.refresh_token
+    return this.accessToken
+  }
+
+  async fetchUserInfo() {
+    const response = await axios.get('https://api.twitch.tv/helix/users', {
+      headers: {
+        'Client-ID': TWITCH_CONFIG.clientId,
+        Authorization: `Bearer ${this.accessToken}`
+      }
+    })
+
+    this.userInfo = response.data.data[0]
+    return this.userInfo
+  }
+
+  async connect() {
     if (this.isConnected) {
       await this.disconnect()
     }
 
-    this.channel = channel.toLowerCase()
+    if (!this.accessToken || !this.userInfo) {
+      throw new Error('Not authenticated')
+    }
+
+    this.channel = this.userInfo.login
 
     this.client = new tmi.Client({
       options: { debug: true },
@@ -23,8 +152,8 @@ class TwitchService {
         reconnect: true
       },
       identity: {
-        username: channel,
-        password: `oauth:${accessToken}`
+        username: this.channel,
+        password: `oauth:${this.accessToken}`
       },
       channels: [this.channel]
     })

@@ -4,8 +4,8 @@ import { electronAPI } from '@electron-toolkit/preload'
 // Custom APIs for renderer
 const api = {
   twitch: {
-    connect: (channel, accessToken) =>
-      ipcRenderer.invoke('twitch:connect', { channel, accessToken }),
+    initiateAuth: () => ipcRenderer.invoke('twitch:initiateAuth'),
+    connect: () => ipcRenderer.invoke('twitch:connect'),
     disconnect: () => ipcRenderer.invoke('twitch:disconnect'),
     onChatMessage: (callback) => ipcRenderer.on('twitch:chatMessage', (_, data) => callback(data)),
     onSubscription: (callback) =>
