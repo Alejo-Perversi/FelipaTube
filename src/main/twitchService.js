@@ -126,7 +126,9 @@ class TwitchService {
         if (error.code === 'ERR_FAILED' || error.errno === -2) {
           if (!isResolved) {
             isResolved = true
-            reject(new Error('La autenticacion fue cancelada'))
+            resolve({ cancelled: true })
+            return
+            // reject(new Error('La autenticacion fue cancelada'))
           }
           return
         }
