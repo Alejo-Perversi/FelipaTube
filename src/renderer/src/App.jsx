@@ -11,7 +11,7 @@ import emojiSurprised from './assets/Bits_Closed_Mouth.png'
 import emojiAngry from './assets/Payaso_Open_Mouth.png'
 
 const initialReactions = [
-  { name: 'Default', img: defaultimg},
+  { name: 'Default', img: defaultimg },
   { name: 'Nuevo seguidor', img: emojiHappy },
   { name: 'Suscripción', img: emojiSad },
   { name: 'Bits', img: emojiSurprised },

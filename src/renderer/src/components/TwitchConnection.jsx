@@ -149,11 +149,11 @@ export default function TwitchConnection({ onEvent }) {
         <div className="space-y-4">
           {userInfo && (
             <div className="flex items-center space-x-3">
-              <img
+              {/* <img
                 src={userInfo.profile_image_url}
                 alt={userInfo.display_name}
                 className="w-10 h-10 rounded-full"
-              />
+              /> */}
               <div>
                 <p className="font-medium">{userInfo.display_name}</p>
                 <p className="text-sm text-gray-600">@{userInfo.login}</p>
