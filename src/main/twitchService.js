@@ -26,6 +26,11 @@ class TwitchService {
       show: false
     })
 
+    // Limpiar todas las cookies y datos de sesión antes de iniciar la autenticación
+    await authWindow.webContents.session.clearStorageData({
+      storages: ['cookies', 'localStorage', 'sessionStorage']
+    })
+
     const scopes = TWITCH_CONFIG.scopes.join(' ')
     const authUrl = `https://id.twitch.tv/oauth2/authorize?client_id=${TWITCH_CONFIG.clientId}&redirect_uri=${encodeURIComponent(TWITCH_CONFIG.redirectUri)}&response_type=code&scope=${encodeURIComponent(scopes)}`
 
