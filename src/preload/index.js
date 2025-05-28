@@ -1,6 +1,9 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 
+// Aumentar el límite de listeners para evitar el warning
+ipcRenderer.setMaxListeners(20)
+
 // Custom APIs for renderer
 const api = {
   twitch: {

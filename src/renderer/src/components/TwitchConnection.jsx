@@ -29,10 +29,11 @@ export default function TwitchConnection({ onEvent }) {
       setConnectionStatus('Abriendo ventana de autenticación...')
 
       const authResult = await window.api.twitch.initiateAuth()
+      console.log(authResult)
 
-      // Si authResult es null, significa que el usuario cerró la ventana
-      if (!authResult) {
-        setConnectionStatus('')
+      // Si authResult es null o tiene cancelled: true, significa que el usuario cerró la ventana
+      if (!authResult || authResult.cancelled) {
+        setConnectionStatus('Autenticación cancelada')
         setIsLoading(false)
         return
       }

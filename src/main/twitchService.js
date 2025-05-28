@@ -15,7 +15,7 @@ class TwitchService {
   }
 
   async initiateAuth() {
-    console.log('Iniciando proceso de autenticación...')
+    console.log('Iniciando proceso de autenticacion...')
     const authWindow = new BrowserWindow({
       width: 800,
       height: 600,
@@ -34,9 +34,11 @@ class TwitchService {
     const scopes = TWITCH_CONFIG.scopes.join(' ')
     const authUrl = `https://id.twitch.tv/oauth2/authorize?client_id=${TWITCH_CONFIG.clientId}&redirect_uri=${encodeURIComponent(TWITCH_CONFIG.redirectUri)}&response_type=code&scope=${encodeURIComponent(scopes)}`
 
-    console.log('URL de autenticación:', authUrl)
+    // console.log('URL de autenticacióo:', authUrl)
 
     return new Promise((resolve, reject) => {
+      let isResolved = false
+
       // Mostrar la ventana cuando esté lista
       authWindow.once('ready-to-show', () => {
         authWindow.show()
@@ -60,6 +62,7 @@ class TwitchService {
               await this.fetchUserInfo()
               console.log('Información del usuario obtenida:', this.userInfo.login)
 
+              isResolved = true
               authWindow.close()
               resolve({
                 accessToken: this.accessToken,
@@ -68,6 +71,8 @@ class TwitchService {
               })
             } catch (error) {
               console.error('Error al intercambiar el código por tokens:', error)
+              isResolved = true
+              authWindow.close()
               reject(error)
             }
           }
@@ -76,21 +81,61 @@ class TwitchService {
 
       // Manejar errores de carga
       authWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
-        console.error('Error al cargar la página:', errorCode, errorDescription)
-        reject(new Error(`Error al cargar la página: ${errorDescription}`))
+        console.log('did-fail-load disparado:', { errorCode, errorDescription, event })
+        if (errorCode === -3) {
+          // ERR_ABORTED
+          if (!isResolved) {
+            isResolved = true
+            resolve({ cancelled: true })
+          }
+          return
+        }
+
+        console.error('Error al cargar la pagina:', errorCode, errorDescription)
+        if (!isResolved) {
+          isResolved = true
+          authWindow.close()
+          reject(new Error(`Error al cargar la pagina: ${errorDescription}`))
+        }
+      })
+
+      // Agregar listener para did-start-loading
+      authWindow.webContents.on('did-start-loading', () => {
+        console.log('Comenzando a cargar la pagina...')
+      })
+
+      // Agregar listener para did-finish-load
+      authWindow.webContents.on('did-finish-load', () => {
+        console.log('Pagina cargada exitosamente')
       })
 
       // Manejar el cierre de la ventana
       authWindow.on('closed', () => {
-        console.log('Ventana de autenticación cerrada')
-        // En lugar de rechazar la promesa, la resolvemos con null
-        resolve(null)
+        console.log('Ventana de autenticacion cerrada')
+        if (!isResolved) {
+          isResolved = true
+          resolve({ cancelled: true })
+        }
       })
 
       // Cargar la URL de autenticación
+      console.log('Intentando cargar URL:', authUrl)
       authWindow.loadURL(authUrl).catch((error) => {
-        console.error('Error al cargar la URL de autenticación:', error)
-        reject(error)
+        // Error loadURL
+        console.error('Error en loadURL:', { error })
+        if (error.code === 'ERR_FAILED' || error.errno === -2) {
+          if (!isResolved) {
+            isResolved = true
+            reject(new Error('La autenticacion fue cancelada'))
+          }
+          return
+        }
+
+        if (!isResolved) {
+          isResolved = true
+          authWindow.close()
+          reject(error)
+        }
       })
     })
   }
