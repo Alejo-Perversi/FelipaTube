@@ -4,12 +4,14 @@ import ReactionSelector from './components/ReactionSelector'
 import Preview from './components/Preview'
 import TwitchConnection from './components/TwitchConnection'
 import { TwitchEvents } from './components/TwitchEvents'
-import emojiHappy from './assets/emoji_happy.svg'
-import emojiSad from './assets/emoji_sad.svg'
-import emojiSurprised from './assets/emoji_surprised.svg'
-import emojiAngry from './assets/emoji_angry.svg'
+import defaultimg from './assets/Default_Closed_Mouth.png'
+import emojiHappy from './assets/Follower_Closed_Mouth.png'
+import emojiSad from './assets/Subscriber_Open_Mouth.png'
+import emojiSurprised from './assets/Bits_Closed_Mouth.png'
+import emojiAngry from './assets/Payaso_Open_Mouth.png'
 
 const initialReactions = [
+  { name: 'Default', img: defaultimg},
   { name: 'Nuevo seguidor', img: emojiHappy },
   { name: 'Suscripción', img: emojiSad },
   { name: 'Bits', img: emojiSurprised },
@@ -45,8 +47,20 @@ function App() {
         const message = data.message.toLowerCase()
 
         // Palabras clave para simular eventos
-        if (message.includes('payaso')) {
+        if (message.includes('!payaso')) {
           console.log('Activando reacción de payaso')
+          setSelectedReaction(initialReactions[4])
+        }
+        if (message.includes('!seguidor')) {
+          console.log('Activando reacción de seguidor')
+          setSelectedReaction(initialReactions[1])
+        }
+        if (message.includes('!subscripcion')) {
+          console.log('Activando reacción de subscripcion')
+          setSelectedReaction(initialReactions[2])
+        }
+        if (message.includes('!bits')) {
+          console.log('Activando reacción de bits')
           setSelectedReaction(initialReactions[3])
         }
         break
