@@ -32,15 +32,15 @@ function App() {
         break
       case 'follow':
         console.log('Nuevo seguidor detectado')
-        setSelectedReaction(initialReactions[0]) // Nuevo seguidor
+        setSelectedReaction(initialReactions[1]) // Nuevo seguidor
         break
       case 'subscription':
         console.log('Nueva suscripción detectada')
-        setSelectedReaction(initialReactions[1]) // Suscripción
+        setSelectedReaction(initialReactions[2]) // Suscripción
         break
       case 'bits':
         console.log('Bits detectados')
-        setSelectedReaction(initialReactions[2]) // Bits
+        setSelectedReaction(initialReactions[3]) // Bits
         break
       case 'chatMessage': {
         console.log('Mensaje recibido:', data.message)
