@@ -212,6 +212,7 @@ class TwitchService {
     try {
       await this.client.connect()
       this.isConnected = true
+      await this.setupFollowWebSocket()
       this.setupEventHandlers()
       return true
     } catch (error) {
@@ -225,6 +226,78 @@ class TwitchService {
       await this.client.disconnect()
       this.isConnected = false
       this.client = null
+    }
+  }
+
+  async setupFollowWebSocket() {
+    const WebSocket = require('ws')
+    this.ws = new WebSocket('wss://eventsub.wss.twitch.tv/ws')
+
+    this.ws.on('open', () => {
+      console.log('[WebSocket] Connected to Twitch EventSub')
+    })
+
+    this.ws.on('message', async (data) => {
+      const message = JSON.parse(data)
+      const { metadata, payload } = message
+
+      if (metadata.message_type === 'session_welcome') {
+        this.sessionId = payload.session.id
+        console.log('[WebSocket] Session ID:', this.sessionId)
+        await this.subscribeToFollowEvents()
+      }
+
+      if (metadata.message_type === 'notification') {
+        const { subscription, event } = payload
+        if (subscription.type === 'channel.follow') {
+          this.emit('follow', {
+            channel: this.userInfo.login,
+            username: event.user_name
+          })
+        }
+      }
+    })
+
+    this.ws.on('close', () => {
+      console.log('[WebSocket] Twitch EventSub WebSocket closed')
+    })
+
+    this.ws.on('error', (err) => {
+      console.error('[WebSocket] Error:', err)
+    })
+  }
+
+  async subscribeToFollowEvents() {
+    try {
+      const response = await axios.post(
+        'https://api.twitch.tv/helix/eventsub/subscriptions',
+        {
+          type: 'channel.follow',
+          version: '2',
+          condition: {
+            broadcaster_user_id: this.userInfo.id,
+            moderator_user_id: this.userInfo.id
+          },
+          transport: {
+            method: 'websocket',
+            session_id: this.sessionId
+          }
+        },
+        {
+          headers: {
+            'Client-ID': TWITCH_CONFIG.clientId,
+            Authorization: `Bearer ${this.accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      )
+
+      console.log('[Twitch] Follow EventSub subscription created')
+    } catch (error) {
+      console.error(
+        '[Twitch] Failed to create EventSub subscription:',
+        error.response?.data || error.message
+      )
     }
   }
 
@@ -262,16 +335,6 @@ class TwitchService {
         channel,
         username: userstate.username,
         bits: userstate.bits,
-        message
-      })
-    })
-
-    // Seguidores
-    this.client.on('follow', (channel, username, method, message) => {
-      this.emit('follow', {
-        channel,
-        username,
-        method,
         message
       })
     })
