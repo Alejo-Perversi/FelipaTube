@@ -4,22 +4,36 @@ import ReactionSelector from './components/ReactionSelector'
 import Preview from './components/Preview'
 import TwitchConnection from './components/TwitchConnection'
 import { TwitchEvents } from './components/TwitchEvents'
-import defaultimg from './assets/Default_Closed_Mouth.png'
-import emojiHappy from './assets/Follower_Closed_Mouth.png'
-import emojiSad from './assets/Subscriber_Open_Mouth.png'
-import emojiSurprised from './assets/Bits_Closed_Mouth.png'
-import emojiAngry from './assets/Payaso_Open_Mouth.png'
+import { useMicDetector } from './hooks/MicrophoneActivity'
+
+import Default_Closed_Mouth from './assets/Default_Closed_Mouth.png'
+import Default_Open_Mouth from './assets/Default_Open_Mouth.png'
+import Follower_Closed_Mouth from './assets/Follower_Closed_Mouth.png'
+import Subscriber_Closed_Mouth from './assets/Subscriber_Closed_Mouth.png'
+import Bits_Closed_Mouth from './assets/Bits_Closed_Mouth.png'
+import Payaso_Open_Mouth from './assets/Payaso_Open_Mouth.png'
 
 const initialReactions = [
-  { name: 'Default', img: defaultimg },
-  { name: 'Nuevo seguidor', img: emojiHappy },
-  { name: 'Suscripción', img: emojiSad },
-  { name: 'Bits', img: emojiSurprised },
-  { name: 'Payaso', img: emojiAngry }
+  { name: 'Default', img: Default_Closed_Mouth },
+  { name: 'Nuevo seguidor', img: Follower_Closed_Mouth },
+  { name: 'Suscripción', img: Subscriber_Closed_Mouth },
+  { name: 'Bits', img: Bits_Closed_Mouth },
+  { name: 'Payaso', img: Payaso_Open_Mouth }
 ]
+const states = {
+  default: {
+    normal: { name: 'normal', img: Default_Closed_Mouth },
+    talking: { name: 'talking', img: Default_Open_Mouth }
+  }
+}
 
 function App() {
-  const [selectedReaction, setSelectedReaction] = useState(null)
+  const [selectedReaction, setSelectedReaction] = useState(states.default.normal)
+
+  useMicDetector((isSpeaking) => {
+    console.log('UseMicDetector ran')
+    setSelectedReaction(isSpeaking ? states.default.talking : states.default.normal)
+  })
 
   const handleTwitchEvent = (eventType, data) => {
     console.log('Evento recibido:', eventType, data)
@@ -28,7 +42,7 @@ function App() {
     switch (eventType) {
       case 'disconnect':
         console.log('Desconectado de Twitch')
-        setSelectedReaction(null)
+        setSelectedReaction(initialReactions[0])
         break
       case 'follow':
         console.log('Nuevo seguidor detectado')
@@ -71,6 +85,7 @@ function App() {
     }
   }
 
+  console.log('test')
   return (
     <div className="flex h-screen w-screen">
       <TwitchEvents onEvent={handleTwitchEvent} />
