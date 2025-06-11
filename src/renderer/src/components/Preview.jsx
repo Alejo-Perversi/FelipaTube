@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types'
 import { useEffect, useState } from 'react'
 
-export default function Preview({ reaction }) {
+export default function Preview({ reaction, bgColor }) {
   const [animationKey, setAnimationKey] = useState(0)
 
   useEffect(() => {
@@ -11,14 +11,17 @@ export default function Preview({ reaction }) {
   }, [reaction])
 
   return (
-    <div className="flex-1 bg-green-500 flex items-center justify-center min-h-screen">
+    <div
+      className="flex-1 bg-green-500 flex items-center justify-center min-h-screen"
+      style={{ backgroundColor: bgColor }}
+    >
       {reaction && (
         <img
           key={animationKey}
           src={reaction.img}
           alt={reaction.name}
-          width={256}
-          height={256}
+          width={500}
+          height={500}
           className={`transition-transform duration-300 ${
             reaction.name === 'talking' ? 'animate-bounce-slight' : ''
           }`}

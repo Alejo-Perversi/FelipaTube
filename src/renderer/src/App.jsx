@@ -46,6 +46,19 @@ function App() {
   const [selectedReaction, setSelectedReaction] = useState(states.default.normal)
   const resetTimeoutRef = useRef(null)
   const [selectedMic, setSelectedMic] = useState('default')
+  const [bgColor, setBgColor] = useState('#00ff00')
+  const [appFocused, setAppFocused] = useState(true)
+
+  useEffect(() => {
+    const handleFocus = () => setAppFocused(true)
+    const handleBlur = () => setAppFocused(false)
+    window.addEventListener('focus', handleFocus)
+    window.addEventListener('blur', handleBlur)
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+      window.removeEventListener('blur', handleBlur)
+    }
+  }, [])
 
   // Cambia a estado y vuelve a default
   const setTemporaryState = (newState) => {
@@ -152,6 +165,15 @@ function App() {
       <div className="flex flex-col w-[320px] bg-gray-300 p-2">
         <TwitchConnection onEvent={handleTwitchEvent} />
         <MicSelector selected={selectedMic} onSelect={setSelectedMic} />
+
+        <label className="text-sm font-semibold mt-2">Color de fondo</label>
+        <input
+          type="color"
+          value={bgColor}
+          onChange={(e) => setBgColor(e.target.value)}
+          className="w-full h-8 rounded"
+        />
+
         <ReactionSelector
           onSelect={(reaction) => {
             const matchedState = Object.entries(states).find(
@@ -162,7 +184,7 @@ function App() {
           reactions={Object.values(states).map((s) => s.normal)}
         />
       </div>
-      <Preview reaction={selectedReaction} />
+      <Preview reaction={selectedReaction} bgColor={bgColor} />
     </div>
   )
 }

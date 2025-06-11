@@ -11,8 +11,8 @@ export default function ReactionSelector({ onSelect, reactions }) {
             className="bg-white rounded-xl shadow p-2 flex flex-col items-center cursor-pointer hover:scale-105 transition-transform"
             onClick={() => onSelect(r)}
           >
-            <img src={r.img} alt={r.name} width={64} height={64} />
-            <span className="mt-2 text-center text-sm font-medium">{r.name}</span>
+            <img src={r.img} alt={r.name} width={100} height={100} />
+            {/*<span className="mt-2 text-center text-sm font-medium">{r.name}</span> */}
           </div>
         ))}
         {/* Card para agregar nueva reacción */}
