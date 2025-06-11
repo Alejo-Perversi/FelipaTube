@@ -17,7 +17,7 @@ export default function TwitchConnection({ onEvent }) {
     window.api.twitch.onSubscription((data) => onEvent('subscription', data))
     window.api.twitch.onBits((data) => onEvent('bits', data))
     window.api.twitch.onFollow((data) => onEvent('follow', data))
-  }, [onEvent])
+  }, [])
 
   const handleConnect = async () => {
     setConnectionStatus('Iniciando autenticación...')

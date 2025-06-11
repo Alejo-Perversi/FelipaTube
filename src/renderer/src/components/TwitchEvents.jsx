@@ -19,7 +19,7 @@ export function TwitchEvents({ onEvent }) {
     window.api.twitch.onFollow((data) => {
       onEvent('follow', data)
     })
-  }, [onEvent])
+  }, [])
 
   return null // Este componente no renderiza nada visualmente
 }
