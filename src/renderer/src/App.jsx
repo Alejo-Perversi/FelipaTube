@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 
 import ReactionSelector from './components/ReactionSelector'
 import Preview from './components/Preview'
+import MicSelector from './components/MicSelector'
 import TwitchConnection from './components/TwitchConnection'
 import { TwitchEvents } from './components/TwitchEvents'
 
@@ -44,6 +45,7 @@ function App() {
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [selectedReaction, setSelectedReaction] = useState(states.default.normal)
   const resetTimeoutRef = useRef(null)
+  const [selectedMic, setSelectedMic] = useState('default')
 
   // Cambia a estado y vuelve a default
   const setTemporaryState = (newState) => {
@@ -89,8 +91,10 @@ function App() {
       console.log('[Mic] Devices:', devices)
 
       stream = await navigator.mediaDevices.getUserMedia({
-        audio: { deviceId: '704c61f76325013004cc96c8b4ca902f5e3fd0e33056042b1dfc285398572f53' } // especificar ID de micrófono acá
+        audio: { deviceId: selectedMic }
       })
+
+      //micGaby = '704c61f76325013004cc96c8b4ca902f5e3fd0e33056042b1dfc285398572f53'
 
       const source = audioContextRef.createMediaStreamSource(stream)
       source.connect(analyser)
@@ -104,7 +108,7 @@ function App() {
       if (stream) stream.getTracks().forEach((track) => track.stop())
       audioContextRef.close()
     }
-  }, [])
+  }, [selectedMic])
 
   // Efecto de micrófono hablando/no hablando.
   useEffect(() => {
@@ -147,6 +151,7 @@ function App() {
       <TwitchEvents onEvent={handleTwitchEvent} />
       <div className="flex flex-col w-[320px] bg-gray-300 p-2">
         <TwitchConnection onEvent={handleTwitchEvent} />
+        <MicSelector selected={selectedMic} onSelect={setSelectedMic} />
         <ReactionSelector
           onSelect={(reaction) => {
             const matchedState = Object.entries(states).find(
