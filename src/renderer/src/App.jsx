@@ -5,6 +5,7 @@ import Preview from './components/Preview'
 import MicSelector from './components/MicSelector'
 import TwitchConnection from './components/TwitchConnection'
 import { TwitchEvents } from './components/TwitchEvents'
+import ConfigMenu from './components/ConfigMenu'
 
 import Default_Closed_Mouth from './assets/Default_Closed_Mouth.png'
 import Default_Open_Mouth from './assets/Default_Open_Mouth.png'
@@ -17,46 +18,62 @@ import Bits_Open_Mouth from './assets/Bits_Open_Mouth.png'
 import Payaso_Open_Mouth from './assets/Payaso_Open_Mouth.png'
 import Payaso_Closed_Mouth from './assets/Payaso_Closed_Mouth.png'
 
-const states = {
+const initialStates = {
   default: {
     normal: { name: 'normal', img: Default_Closed_Mouth },
-    talking: { name: 'talking', img: Default_Open_Mouth }
+    talking: { name: 'talking', img: Default_Open_Mouth },
+    config: { label: 'Default', command: '', event: '', timeout: 0 }
   },
   follower: {
     normal: { name: 'normal', img: Follower_Closed_Mouth },
-    talking: { name: 'talking', img: Follower_Open_Mouth }
+    talking: { name: 'talking', img: Follower_Open_Mouth },
+    config: { label: 'Follower', command: '!seguidor', event: 'follow', timeout: 5 }
   },
   subscriber: {
     normal: { name: 'normal', img: Subscriber_Closed_Mouth },
-    talking: { name: 'talking', img: Subscriber_Open_Mouth }
+    talking: { name: 'talking', img: Subscriber_Open_Mouth },
+    config: { label: 'Subscriber', command: '!subscripcion', event: 'subscription', timeout: 5 }
   },
   bits: {
     normal: { name: 'normal', img: Bits_Closed_Mouth },
-    talking: { name: 'talking', img: Bits_Open_Mouth }
+    talking: { name: 'talking', img: Bits_Open_Mouth },
+    config: { label: 'Bits', command: '!bits', event: 'bits', timeout: 5 }
   },
   payaso: {
     normal: { name: 'normal', img: Payaso_Closed_Mouth },
-    talking: { name: 'talking', img: Payaso_Open_Mouth }
+    talking: { name: 'talking', img: Payaso_Open_Mouth },
+    config: { label: 'Payaso', command: '!payaso', event: 'chatMessage', timeout: 10 }
   }
 }
 
 function App() {
+  const [states, setStates] = useState(initialStates)
   const [currentState, setCurrentState] = useState('default')
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [selectedReaction, setSelectedReaction] = useState(states.default.normal)
   const resetTimeoutRef = useRef(null)
   const [selectedMic, setSelectedMic] = useState('default')
+  const [editStateKey, setEditStateKey] = useState(null)
+  const [bgColor, setBgColor] = useState('#00ff00')
+  const [appFocused, setAppFocused] = useState(true)
 
-  // Cambia a estado y vuelve a default
-  const setTemporaryState = (newState) => {
-    setCurrentState(newState)
+  useEffect(() => {
+    const handleFocus = () => setAppFocused(true)
+    const handleBlur = () => setAppFocused(false)
+    window.addEventListener('focus', handleFocus)
+    window.addEventListener('blur', handleBlur)
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+      window.removeEventListener('blur', handleBlur)
+    }
+  }, [])
 
+  // Cambia a estado y vuelve a default pasado el tiempo especificado
+  const setTemporaryState = (newKey) => {
+    setCurrentState(newKey)
     if (resetTimeoutRef.current) clearTimeout(resetTimeoutRef.current)
-
-    // Vuelve a default automáticamente
-    resetTimeoutRef.current = setTimeout(() => {
-      setCurrentState('default')
-    }, 5000)
+    const timeout = states[newKey]?.config?.timeout || 15
+    resetTimeoutRef.current = setTimeout(() => setCurrentState('default'), timeout * 1000)
   }
 
   // Detección del micrófono
@@ -67,7 +84,6 @@ function App() {
     analyser.fftSize = 2048
     const bufferLength = analyser.fftSize
     const dataArray = new Uint8Array(bufferLength)
-
     let prevSpeaking = false
     let animationFrame
 
@@ -80,29 +96,18 @@ function App() {
       if (speaking !== prevSpeaking) {
         prevSpeaking = speaking
         setIsSpeaking(speaking)
-        console.log('[Mic] Speaking:', speaking, 'Volume:', volume.toFixed(4))
       }
-
       animationFrame = requestAnimationFrame(detect)
     }
 
     const init = async () => {
-      const devices = await navigator.mediaDevices.enumerateDevices()
-      console.log('[Mic] Devices:', devices)
-
-      stream = await navigator.mediaDevices.getUserMedia({
-        audio: { deviceId: selectedMic }
-      })
-
-      //micGaby = '704c61f76325013004cc96c8b4ca902f5e3fd0e33056042b1dfc285398572f53'
-
+      stream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: selectedMic } })
       const source = audioContextRef.createMediaStreamSource(stream)
       source.connect(analyser)
       detect()
     }
 
     init()
-
     return () => {
       if (animationFrame) cancelAnimationFrame(animationFrame)
       if (stream) stream.getTracks().forEach((track) => track.stop())
@@ -113,56 +118,65 @@ function App() {
   // Efecto de micrófono hablando/no hablando.
   useEffect(() => {
     setSelectedReaction(isSpeaking ? states[currentState].talking : states[currentState].normal)
-  }, [isSpeaking, currentState])
+  }, [isSpeaking, currentState, states])
 
   // Eventos twitch cambian el estado
   const handleTwitchEvent = (eventType, data) => {
-    console.log('Evento recibido:', eventType, data)
+    const triggeredKey = Object.entries(states).find(
+      ([key, s]) => s.config.event === eventType || data.message?.includes(s.config.command)
+    )?.[0]
+    if (triggeredKey) setTemporaryState(triggeredKey)
+  }
 
-    switch (eventType) {
-      case 'disconnect':
-        setTemporaryState('default')
-        break
-      case 'follow':
-        setTemporaryState('follower')
-        break
-      case 'subscription':
-        setTemporaryState('subscriber')
-        break
-      case 'bits':
-        setTemporaryState('bits')
-        break
-      case 'chatMessage': {
-        const message = data.message.toLowerCase()
-        if (message.includes('!payaso')) setTemporaryState('payaso')
-        if (message.includes('!seguidor')) setTemporaryState('follower')
-        if (message.includes('!subscripcion')) setTemporaryState('subscriber')
-        if (message.includes('!bits')) setTemporaryState('bits')
-        break
+  const updateStateConfig = (key, newConfig) => {
+    setStates((prev) => ({
+      ...prev,
+      [key]: {
+        ...prev[key],
+        config: { ...prev[key].config, ...newConfig }
       }
-      default:
-        console.log('Evento no manejado:', eventType)
-        break
-    }
+    }))
+    setEditStateKey(null)
   }
 
   return (
     <div className="flex h-screen w-screen">
       <TwitchEvents onEvent={handleTwitchEvent} />
-      <div className="flex flex-col w-[320px] bg-gray-300 p-2">
-        <TwitchConnection onEvent={handleTwitchEvent} />
-        <MicSelector selected={selectedMic} onSelect={setSelectedMic} />
-        <ReactionSelector
-          onSelect={(reaction) => {
-            const matchedState = Object.entries(states).find(
-              ([_, val]) => val.normal.img === reaction.img
-            )
-            setTemporaryState(matchedState?.[0] || 'default')
-          }}
-          reactions={Object.values(states).map((s) => s.normal)}
-        />
-      </div>
-      <Preview reaction={selectedReaction} />
+      {appFocused && (
+        <div className="flex flex-col w-[320px] bg-gray-300 p-2">
+          <TwitchConnection onEvent={handleTwitchEvent} />
+          <MicSelector selected={selectedMic} onSelect={setSelectedMic} />
+
+          <label className="text-sm font-semibold mt-2">Color de fondo</label>
+          <input
+            type="color"
+            value={bgColor}
+            onChange={(e) => setBgColor(e.target.value)}
+            className="w-full h-8 rounded"
+          />
+
+          <ReactionSelector
+            reactions={Object.entries(states).map(([key, val]) => ({
+              name: val.config?.label || key,
+              img: val.normal.img,
+              key: key
+            }))}
+            onSelect={(reaction) => setEditStateKey(reaction.key)}
+          />
+        </div>
+      )}
+      <Preview reaction={selectedReaction} bgColor={bgColor} />
+      {appFocused && (
+        <div className="flex flex-col w-[320px] bg-gray-300 p-2">
+          {editStateKey && (
+            <ConfigMenu
+              stateKey={editStateKey}
+              config={states[editStateKey].config}
+              onSave={updateStateConfig}
+            />
+          )}
+        </div>
+      )}
     </div>
   )
 }
