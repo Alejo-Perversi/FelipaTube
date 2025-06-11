@@ -301,6 +301,37 @@ class TwitchService {
     }
   }
 
+  async removeSubscriptionByType(type) {
+    try {
+      const res = await axios.get('https://api.twitch.tv/helix/eventsub/subscriptions', {
+        headers: {
+          'Client-ID': TWITCH_CONFIG.clientId,
+          Authorization: `Bearer ${this.accessToken}`
+        }
+      })
+
+      const matches = res.data.data.filter(
+        (sub) => sub.type === type && sub.transport.method === 'websocket'
+      )
+
+      for (const sub of matches) {
+        await axios.delete('https://api.twitch.tv/helix/eventsub/subscriptions', {
+          params: { id: sub.id },
+          headers: {
+            'Client-ID': TWITCH_CONFIG.clientId,
+            Authorization: `Bearer ${this.accessToken}`
+          }
+        })
+        console.log(`[Twitch] Removed subscription: ${sub.type} (ID: ${sub.id})`)
+      }
+    } catch (error) {
+      console.error(
+        '[Twitch] Failed to remove subscription:',
+        error.response?.data || error.message
+      )
+    }
+  }
+
   setupEventHandlers() {
     if (!this.client) return
 

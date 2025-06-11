@@ -67,6 +67,10 @@ app.whenReady().then(() => {
     return await twitchService.disconnect()
   })
 
+  ipcMain.handle('twitch:removeEventSub', async (event, type) => {
+    return await twitchService.removeSubscriptionByType(type)
+  })
+
   // Twitch event handlers
   twitchService.emit = (event, data) => {
     mainWindow.webContents.send(`twitch:${event}`, data)

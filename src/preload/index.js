@@ -14,7 +14,8 @@ const api = {
     onSubscription: (callback) =>
       ipcRenderer.on('twitch:subscription', (_, data) => callback(data)),
     onBits: (callback) => ipcRenderer.on('twitch:bits', (_, data) => callback(data)),
-    onFollow: (callback) => ipcRenderer.on('twitch:follow', (_, data) => callback(data))
+    onFollow: (callback) => ipcRenderer.on('twitch:follow', (_, data) => callback(data)),
+    removeEventSub: (type) => ipcRenderer.invoke('twitch:removeEventSub', type),
   }
 }
 

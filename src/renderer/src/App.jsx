@@ -122,10 +122,20 @@ function App() {
 
   // Eventos twitch cambian el estado
   const handleTwitchEvent = (eventType, data) => {
-    const triggeredKey = Object.entries(states).find(
-      ([key, s]) => s.config.event === eventType || data.message?.includes(s.config.command)
-    )?.[0]
-    if (triggeredKey) setTemporaryState(triggeredKey)
+    let triggeredKey = null
+
+    triggeredKey = Object.entries(states).find(([_, s]) => s.config?.event === eventType)?.[0]
+
+    if (!triggeredKey && eventType === 'chatMessage' && data?.message) {
+      triggeredKey = Object.entries(states).find(
+        ([_, s]) =>
+          s.config?.command && data.message.toLowerCase().includes(s.config.command.toLowerCase())
+      )?.[0]
+    }
+
+    if (triggeredKey) {
+      setTemporaryState(triggeredKey)
+    }
   }
 
   const updateStateConfig = (key, newConfig) => {
