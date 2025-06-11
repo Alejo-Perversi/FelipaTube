@@ -19,24 +19,24 @@ import Payaso_Closed_Mouth from './assets/Payaso_Closed_Mouth.png'
 
 const states = {
   default: {
-    normal: { name: 'normal', img: Default_Closed_Mouth },
-    talking: { name: 'talking', img: Default_Open_Mouth }
+    normal: { name: 'Default', img: Default_Closed_Mouth },
+    talking: { name: 'Default', img: Default_Open_Mouth }
   },
   follower: {
-    normal: { name: 'normal', img: Follower_Closed_Mouth },
-    talking: { name: 'talking', img: Follower_Open_Mouth }
+    normal: { name: 'Follower', img: Follower_Closed_Mouth },
+    talking: { name: 'Follower', img: Follower_Open_Mouth }
   },
   subscriber: {
-    normal: { name: 'normal', img: Subscriber_Closed_Mouth },
-    talking: { name: 'talking', img: Subscriber_Open_Mouth }
+    normal: { name: 'Subscription', img: Subscriber_Closed_Mouth },
+    talking: { name: 'Subscription', img: Subscriber_Open_Mouth }
   },
   bits: {
-    normal: { name: 'normal', img: Bits_Closed_Mouth },
-    talking: { name: 'talking', img: Bits_Open_Mouth }
+    normal: { name: 'Bits', img: Bits_Closed_Mouth },
+    talking: { name: 'Bits', img: Bits_Open_Mouth }
   },
   payaso: {
-    normal: { name: 'normal', img: Payaso_Closed_Mouth },
-    talking: { name: 'talking', img: Payaso_Open_Mouth }
+    normal: { name: 'Payaso', img: Payaso_Closed_Mouth },
+    talking: { name: 'Payaso', img: Payaso_Open_Mouth }
   }
 }
 

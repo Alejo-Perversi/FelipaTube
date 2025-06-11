@@ -12,7 +12,7 @@ export default function ReactionSelector({ onSelect, reactions }) {
             onClick={() => onSelect(r)}
           >
             <img src={r.img} alt={r.name} width={100} height={100} />
-            {/*<span className="mt-2 text-center text-sm font-medium">{r.name}</span> */}
+            <span className="mt-2 text-center text-sm font-medium">{r.name}</span>
           </div>
         ))}
         {/* Card para agregar nueva reacción */}
