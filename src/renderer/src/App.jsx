@@ -5,6 +5,7 @@ import Preview from './components/Preview'
 import MicSelector from './components/MicSelector'
 import TwitchConnection from './components/TwitchConnection'
 import { TwitchEvents } from './components/TwitchEvents'
+import ExpressionEditorMenu from './components/ExpressionEditorMenu'
 
 import Default_Closed_Mouth from './assets/Default_Closed_Mouth.png'
 import Default_Open_Mouth from './assets/Default_Open_Mouth.png'
@@ -49,6 +50,8 @@ function App() {
   const [bgColor, setBgColor] = useState('#00ff00')
   const [appFocused, setAppFocused] = useState(true)
   const [micEnabled, setMicEnabled] = useState(true) // Nuevo estado
+  const [openMenuReaction, setOpenMenuReaction] = useState(null)
+  const [editorReaction, setEditorReaction] = useState(null)
 
   useEffect(() => {
     const handleFocus = () => setAppFocused(true)
@@ -196,9 +199,20 @@ function App() {
             setTemporaryState(matchedState?.[0] || 'default')
           }}
           reactions={Object.values(states).map((s) => s.normal)}
+          openMenuReaction={openMenuReaction}
+          setOpenMenuReaction={setOpenMenuReaction}
         />
       </div>
       <Preview reaction={selectedReaction} bgColor={bgColor} />
+      {/* Menú editor a la derecha */}
+      {openMenuReaction && (
+        <div className="fixed right-0 top-0 h-full w-[350px] bg-gray-100 border-l shadow-lg z-30 flex flex-col p-4">
+          <ExpressionEditorMenu
+            reaction={Object.values(states).map((s) => s.normal).find(r => r.name === openMenuReaction)}
+            onClose={() => setOpenMenuReaction(null)}
+          />
+        </div>
+      )}
     </div>
   )
 }
