@@ -48,7 +48,6 @@ function App() {
   const [selectedMic, setSelectedMic] = useState('default')
   const [bgColor, setBgColor] = useState('#00ff00')
   const [appFocused, setAppFocused] = useState(true)
-  const [micEnabled, setMicEnabled] = useState(true) // Nuevo estado
 
   useEffect(() => {
     const handleFocus = () => setAppFocused(true)
@@ -75,11 +74,6 @@ function App() {
 
   // Detección del micrófono
   useEffect(() => {
-    if (!micEnabled) {
-      setIsSpeaking(false)
-      return
-    }
-
     let stream
     const audioContextRef = new (window.AudioContext || window.webkitAudioContext)()
     const analyser = audioContextRef.createAnalyser()
@@ -113,6 +107,8 @@ function App() {
         audio: { deviceId: selectedMic }
       })
 
+      //micGaby = '704c61f76325013004cc96c8b4ca902f5e3fd0e33056042b1dfc285398572f53'
+
       const source = audioContextRef.createMediaStreamSource(stream)
       source.connect(analyser)
       detect()
@@ -125,7 +121,7 @@ function App() {
       if (stream) stream.getTracks().forEach((track) => track.stop())
       audioContextRef.close()
     }
-  }, [selectedMic, micEnabled]) // <-- agrega micEnabled como dependencia
+  }, [selectedMic])
 
   // Efecto de micrófono hablando/no hablando.
   useEffect(() => {
@@ -177,16 +173,6 @@ function App() {
           onChange={(e) => setBgColor(e.target.value)}
           className="w-full h-8 rounded"
         />
-
-        {/* Botón para activar/desactivar micrófono */}
-        <button
-          className={`mb-2 py-2 px-4 rounded font-bold ${
-            micEnabled ? 'bg-green-500 text-white' : 'bg-gray-400 text-gray-700'
-          }`}
-          onClick={() => setMicEnabled((v) => !v)}
-        >
-          {micEnabled ? 'Desactivar micrófono' : 'Activar micrófono'}
-        </button>
 
         <ReactionSelector
           onSelect={(reaction) => {
