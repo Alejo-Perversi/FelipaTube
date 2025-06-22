@@ -1,11 +1,16 @@
+// src/renderer/App.jsx
+
 import { useState, useEffect, useRef } from 'react'
 
+// Componentes
+import { EventSettings } from './components/EventSettings' // 1. MODIFICADO: Importamos el nuevo componente
 import ReactionSelector from './components/ReactionSelector'
 import Preview from './components/Preview'
 import MicSelector from './components/MicSelector'
 import TwitchConnection from './components/TwitchConnection'
 import { TwitchEvents } from './components/TwitchEvents'
 
+// Assets de imágenes
 import Default_Closed_Mouth from './assets/Default_Closed_Mouth.png'
 import Default_Open_Mouth from './assets/Default_Open_Mouth.png'
 import Follower_Closed_Mouth from './assets/Follower_Closed_Mouth.png'
@@ -16,8 +21,10 @@ import Bits_Closed_Mouth from './assets/Bits_Closed_Mouth.png'
 import Bits_Open_Mouth from './assets/Bits_Open_Mouth.png'
 import Payaso_Open_Mouth from './assets/Payaso_Open_Mouth.png'
 import Payaso_Closed_Mouth from './assets/Payaso_Closed_Mouth.png'
+import SettingsIcon from './assets/config-removebg-preview.png' // 1. MODIFICADO: Ícono para el botón de config
 
 const states = {
+  // Las llaves DEBEN estar en minúsculas para coincidir con los nombres de evento de Twitch
   default: {
     normal: { name: 'Default', img: Default_Closed_Mouth },
     talking: { name: 'Default', img: Default_Open_Mouth }
@@ -26,7 +33,7 @@ const states = {
     normal: { name: 'Follower', img: Follower_Closed_Mouth },
     talking: { name: 'Follower', img: Follower_Open_Mouth }
   },
-  subscriber: {
+  subscription: { // Cambiado de 'subscriber' a 'subscription' para coincidir con el evento de Twitch
     normal: { name: 'Subscription', img: Subscriber_Closed_Mouth },
     talking: { name: 'Subscription', img: Subscriber_Open_Mouth }
   },
@@ -40,29 +47,36 @@ const states = {
   }
 }
 
+// Lista de expresiones disponibles para pasar al componente de configuración
+const AVAILABLE_EXPRESSIONS = Object.keys(states)
+
 function App() {
+  // Estados existentes
   const [currentState, setCurrentState] = useState('default')
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [selectedReaction, setSelectedReaction] = useState(states.default.normal)
   const resetTimeoutRef = useRef(null)
   const [selectedMic, setSelectedMic] = useState('default')
   const [bgColor, setBgColor] = useState('#00ff00')
-  const [appFocused, setAppFocused] = useState(true)
 
+  // 2. NUEVO: Estados para la configuración
+  const [isSettingsVisible, setSettingsVisible] = useState(false)
+  const [expressionConfig, setExpressionConfig] = useState({})
+
+  // 3. NUEVO: Cargar la configuración al iniciar la app
   useEffect(() => {
-    const handleFocus = () => setAppFocused(true)
-    const handleBlur = () => setAppFocused(false)
-    window.addEventListener('focus', handleFocus)
-    window.addEventListener('blur', handleBlur)
-    return () => {
-      window.removeEventListener('focus', handleFocus)
-      window.removeEventListener('blur', handleBlur)
-    }
+    window.api.loadExpressionConfig().then((config) => {
+      console.log('[Config] Configuración cargada:', config)
+      setExpressionConfig(config)
+    })
   }, [])
 
+
   // Cambia a estado y vuelve a default
-  const setTemporaryState = (newState) => {
-    setCurrentState(newState)
+  const setTemporaryState = (newStateKey) => {
+    // Comprueba si el estado solicitado existe. Si no, usa 'default'.
+    const stateToSet = states[newStateKey] ? newStateKey : 'default'
+    setCurrentState(stateToSet)
 
     if (resetTimeoutRef.current) clearTimeout(resetTimeoutRef.current)
 
@@ -72,7 +86,7 @@ function App() {
     }, 5000)
   }
 
-  // Detección del micrófono
+  // Detección del micrófono (sin cambios)
   useEffect(() => {
     let stream
     const audioContextRef = new (window.AudioContext || window.webkitAudioContext)()
@@ -80,7 +94,6 @@ function App() {
     analyser.fftSize = 2048
     const bufferLength = analyser.fftSize
     const dataArray = new Uint8Array(bufferLength)
-
     let prevSpeaking = false
     let animationFrame
 
@@ -89,33 +102,24 @@ function App() {
       const avg = dataArray.reduce((sum, val) => sum + Math.abs(val - 128), 0) / bufferLength
       const volume = avg / 128
       const speaking = volume > 0.02
-
       if (speaking !== prevSpeaking) {
         prevSpeaking = speaking
         setIsSpeaking(speaking)
-        console.log('[Mic] Speaking:', speaking, 'Volume:', volume.toFixed(4))
       }
-
       animationFrame = requestAnimationFrame(detect)
     }
 
     const init = async () => {
-      const devices = await navigator.mediaDevices.enumerateDevices()
-      console.log('[Mic] Devices:', devices)
-
-      stream = await navigator.mediaDevices.getUserMedia({
-        audio: { deviceId: selectedMic }
-      })
-
-      //micGaby = '704c61f76325013004cc96c8b4ca902f5e3fd0e33056042b1dfc285398572f53'
-
-      const source = audioContextRef.createMediaStreamSource(stream)
-      source.connect(analyser)
-      detect()
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: selectedMic } })
+        const source = audioContextRef.createMediaStreamSource(stream)
+        source.connect(analyser)
+        detect()
+      } catch (error) {
+        console.error("Error al iniciar el micrófono:", error)
+      }
     }
-
     init()
-
     return () => {
       if (animationFrame) cancelAnimationFrame(animationFrame)
       if (stream) stream.getTracks().forEach((track) => track.stop())
@@ -125,44 +129,52 @@ function App() {
 
   // Efecto de micrófono hablando/no hablando.
   useEffect(() => {
-    setSelectedReaction(isSpeaking ? states[currentState].talking : states[currentState].normal)
+    if (states[currentState]) {
+      setSelectedReaction(isSpeaking ? states[currentState].talking : states[currentState].normal)
+    } else {
+      // Fallback por si el estado no existe
+      setSelectedReaction(isSpeaking ? states.default.talking : states.default.normal)
+    }
   }, [isSpeaking, currentState])
 
-  // Eventos twitch cambian el estado
+  // 4. MODIFICADO: Los eventos de Twitch ahora usan la configuración dinámica
   const handleTwitchEvent = (eventType, data) => {
-    console.log('Evento recibido:', eventType, data)
+    console.log('[Twitch] Evento recibido:', eventType, data)
 
-    switch (eventType) {
-      case 'disconnect':
-        setTemporaryState('default')
-        break
-      case 'follow':
-        setTemporaryState('follower')
-        break
-      case 'subscription':
-        setTemporaryState('subscriber')
-        break
-      case 'bits':
-        setTemporaryState('bits')
-        break
-      case 'chatMessage': {
-        const message = data.message.toLowerCase()
-        if (message.includes('!payaso')) setTemporaryState('payaso')
-        if (message.includes('!seguidor')) setTemporaryState('follower')
-        if (message.includes('!subscripcion')) setTemporaryState('subscriber')
-        if (message.includes('!bits')) setTemporaryState('bits')
-        break
-      }
-      default:
-        console.log('Evento no manejado:', eventType)
-        break
+    // Primero, maneja los comandos de chat como antes (son manuales)
+    if (eventType === 'chatMessage') {
+      const message = data.message.toLowerCase()
+      if (message.includes('!payaso')) setTemporaryState('payaso')
+      if (message.includes('!seguidor')) setTemporaryState('follower')
+      // ... otros comandos si los tienes ...
+      return // Termina la ejecución para no buscar en la config
     }
+
+    // Luego, maneja los eventos automáticos usando la configuración
+    const expressionForEvent = expressionConfig[eventType]
+    
+    if (expressionForEvent) {
+      console.log(`[Config] Evento '${eventType}' dispara la expresión '${expressionForEvent}'`)
+      // La clave de la expresión debe estar en minúscula, ej: 'payaso'
+      setTemporaryState(expressionForEvent.toLowerCase()) 
+    } else {
+      console.log(`[Config] No hay expresión configurada para el evento: ${eventType}`)
+    }
+  }
+  
+  // NUEVO: Función para actualizar el estado de la config después de guardar
+  const handleConfigSaved = (newConfig) => {
+      console.log('[Config] Configuración guardada y actualizada en la app.', newConfig)
+      setExpressionConfig(newConfig)
   }
 
   return (
     <div className="flex h-screen w-screen">
+      {/* Componentes que no se ven en la UI */}
       <TwitchEvents onEvent={handleTwitchEvent} />
-      <div className="flex flex-col w-[320px] bg-gray-300 p-2">
+
+      {/* 5. MODIFICADO: El layout principal */}
+      <div className="flex flex-col w-[320px] bg-gray-300 p-2 overflow-y-auto">
         <TwitchConnection onEvent={handleTwitchEvent} />
         <MicSelector selected={selectedMic} onSelect={setSelectedMic} />
 
@@ -184,7 +196,25 @@ function App() {
           reactions={Object.values(states).map((s) => s.normal)}
         />
       </div>
-      <Preview reaction={selectedReaction} bgColor={bgColor} />
+
+      <div className="relative flex-1">
+        <Preview reaction={selectedReaction} bgColor={bgColor} />
+        
+        {/* Botón de configuración flotante */}
+        <div className="absolute top-4 right-4">
+          <button onClick={() => setSettingsVisible(true)} className="p-2 bg-gray-800 bg-opacity-50 hover:bg-opacity-75 rounded-full transition-all">
+            <img src={SettingsIcon} alt="Configuración" className="w-6 h-6 invert" />
+          </button>
+        </div>
+      </div>
+
+      {/* Modal de configuración */}
+      <EventSettings
+        isVisible={isSettingsVisible}
+        onClose={() => setSettingsVisible(false)}
+        onSave={handleConfigSaved} // Pasa la nueva función de guardado
+        availableExpressions={AVAILABLE_EXPRESSIONS} // Pasa las expresiones disponibles
+      />
     </div>
   )
 }

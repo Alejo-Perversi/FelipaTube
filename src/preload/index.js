@@ -6,6 +6,10 @@ ipcRenderer.setMaxListeners(20)
 
 // Custom APIs for renderer
 const api = {
+
+  loadExpressionConfig: () => ipcRenderer.invoke('load-expression-config'),
+  saveExpressionConfig: (config) => ipcRenderer.invoke('save-expression-config', config),
+
   twitch: {
     initiateAuth: () => ipcRenderer.invoke('twitch:initiateAuth'),
     connect: () => ipcRenderer.invoke('twitch:connect'),

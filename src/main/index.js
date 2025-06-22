@@ -3,6 +3,7 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { twitchService } from './twitchService'
+import { registerSettingsHandlers } from './settingsManager.js' // <-- 1. IMPORTA DESDE EL NUEVO ARCHIVO
 
 function createWindow() {
   // Create the browser window.
@@ -35,6 +36,10 @@ function createWindow() {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
 
+  if (is.dev) {
+    mainWindow.webContents.openDevTools()
+  }
+
   return mainWindow
 }
 
@@ -44,6 +49,7 @@ function createWindow() {
 app.whenReady().then(() => {
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
+  console.log('LA RUTA DE DATOS ES:', app.getPath('userData')); // <-- AÑADE ESTA LÍNEA
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.
@@ -53,6 +59,9 @@ app.whenReady().then(() => {
   })
 
   const mainWindow = createWindow()
+
+  registerSettingsHandlers() // <-- 2. LLAMA A LA FUNCIÓN AQUÍ (ESTE ES EL PASO CLAVE)
+
 
   // Twitch connection handlers
   ipcMain.handle('twitch:initiateAuth', async () => {
