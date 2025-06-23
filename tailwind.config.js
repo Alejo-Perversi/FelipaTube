@@ -1,21 +1,23 @@
 /** @type {import('tailwindcss').Config} */
+// tailwind.config.js
 module.exports = {
-  content: ['./src/**/*.{html,js,jsx}'],
+  content: ['./src/**/*.{js,jsx,ts,tsx,html}'],
+  safelist: ['animate-bounce-y'],
   theme: {
     extend: {
       keyframes: {
-        'bounce-slight': {
-          '0%': { transform: 'scale(1)' },
-          '30%': { transform: 'scale(1.05)' },
-          '60%': { transform: 'scale(0.98)' },
-          '100%': { transform: 'scale(1)' }
+        'bounce-y': {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-30px)' }
         }
       },
       animation: {
-        'bounce-slight': 'bounce-slight 300ms ease-in-out'
+        'bounce-y': 'bounce-y 0.5s ease'
       }
     }
   },
   plugins: []
 }
+
+
 

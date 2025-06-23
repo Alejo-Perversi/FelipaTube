@@ -21,23 +21,53 @@ import Payaso_Closed_Mouth from './assets/Payaso_Closed_Mouth.png'
 const states = {
   default: {
     normal: { name: 'Default', img: Default_Closed_Mouth },
-    talking: { name: 'Default', img: Default_Open_Mouth }
+    talking: { name: 'Default', img: Default_Open_Mouth },
+    config: {
+      label: 'Default',
+      command: '!default',
+      event: '',
+      timeout: -1
+    }
   },
   follower: {
     normal: { name: 'Follower', img: Follower_Closed_Mouth },
-    talking: { name: 'Follower', img: Follower_Open_Mouth }
+    talking: { name: 'Follower', img: Follower_Open_Mouth },
+    config: {
+      label: 'Follower',
+      command: '!follow',
+      event: 'follow',
+      timeout: 5
+    }
   },
   subscriber: {
     normal: { name: 'Subscription', img: Subscriber_Closed_Mouth },
-    talking: { name: 'Subscription', img: Subscriber_Open_Mouth }
+    talking: { name: 'Subscription', img: Subscriber_Open_Mouth },
+    config: {
+      label: 'Subscription',
+      command: '!subscription',
+      event: 'subscription',
+      timeout: 5
+    }
   },
   bits: {
     normal: { name: 'Bits', img: Bits_Closed_Mouth },
-    talking: { name: 'Bits', img: Bits_Open_Mouth }
+    talking: { name: 'Bits', img: Bits_Open_Mouth },
+    config: {
+      label: 'Bits',
+      command: '!bits',
+      event: 'bits',
+      timeout: 5
+    }
   },
   payaso: {
     normal: { name: 'Payaso', img: Payaso_Closed_Mouth },
-    talking: { name: 'Payaso', img: Payaso_Open_Mouth }
+    talking: { name: 'Payaso', img: Payaso_Open_Mouth },
+    config: {
+      label: 'Payaso',
+      command: '!payaso',
+      event: 'point redemption',
+      timeout: 10
+    }
   }
 }
 
@@ -132,7 +162,11 @@ function App() {
 
   // Efecto de micrófono hablando/no hablando.
   useEffect(() => {
-    setSelectedReaction(isSpeaking ? states[currentState].talking : states[currentState].normal)
+    setSelectedReaction(
+      isSpeaking
+        ? { name: 'talking', img: states[currentState].talking.img }
+        : states[currentState].normal
+    )
   }, [isSpeaking, currentState])
 
   // Eventos twitch cambian el estado
@@ -208,7 +242,9 @@ function App() {
       {openMenuReaction && (
         <div className="fixed right-0 top-0 h-full w-[350px] bg-gray-100 border-l shadow-lg z-30 flex flex-col p-4">
           <ExpressionEditorMenu
-            reaction={Object.values(states).map((s) => s.normal).find(r => r.name === openMenuReaction)}
+            reaction={Object.values(states)
+              .map((s) => s.normal)
+              .find((r) => r.name === openMenuReaction)}
             onClose={() => setOpenMenuReaction(null)}
           />
         </div>
