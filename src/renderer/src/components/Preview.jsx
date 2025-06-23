@@ -12,8 +12,8 @@ export default function Preview({ reaction, bgColor }) {
 
   return (
     <div
-      className="flex-1 bg-green-500 flex items-center justify-center min-h-screen"
-      style={{ backgroundColor: bgColor }}
+      className="flex-1 flex items-center justify-center min-h-screen"
+      style={{ backgroundColor: bgColor || '#00FF00' }}
     >
       {reaction && (
         <img
@@ -23,7 +23,7 @@ export default function Preview({ reaction, bgColor }) {
           width={500}
           height={500}
           className={`transition-transform duration-300 ${
-            reaction.name === 'talking' ? 'animate-bounce-slight' : ''
+            reaction.name === 'talking' ? 'animate-bounce-y' : ''
           }`}
         />
       )}
@@ -35,5 +35,6 @@ Preview.propTypes = {
   reaction: PropTypes.shape({
     img: PropTypes.any,
     name: PropTypes.string
-  })
+  }),
+  bgColor: PropTypes.string
 }

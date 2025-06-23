@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types'
 
-export default function ReactionSelector({ onSelect, reactions }) {
+export default function ReactionSelector({ onSelect, reactions, openMenuReaction, setOpenMenuReaction }) {
   return (
     <div className="w-[300px] bg-gray-300 p-2">
       <h4 className="text-2xl font-bold mb-2">Expresiones</h4>
@@ -8,8 +8,12 @@ export default function ReactionSelector({ onSelect, reactions }) {
         {reactions.map((r) => (
           <div
             key={r.name}
-            className="bg-white rounded-xl shadow p-2 flex flex-col items-center cursor-pointer hover:scale-105 transition-transform"
+            className="relative bg-white rounded-xl shadow p-2 flex flex-col items-center cursor-pointer hover:scale-105 transition-transform"
             onClick={() => onSelect(r)}
+            onContextMenu={(e) => {
+              e.preventDefault()
+              setOpenMenuReaction(r.name)
+            }}
           >
             <img src={r.img} alt={r.name} width={100} height={100} />
             <span className="mt-2 text-center text-sm font-medium">{r.name}</span>
