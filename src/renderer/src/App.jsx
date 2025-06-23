@@ -82,6 +82,14 @@ function App() {
   const [micEnabled, setMicEnabled] = useState(true) // Nuevo estado
   const [openMenuReaction, setOpenMenuReaction] = useState(null)
   const [editorReaction, setEditorReaction] = useState(null)
+  const [statesData, setStatesData] = useState(() => {
+    const saved = localStorage.getItem('felipatube_states')
+    return saved ? JSON.parse(saved) : states
+  })
+
+  useEffect(() => {
+    localStorage.setItem('felipatube_states', JSON.stringify(statesData))
+  }, [statesData])
 
   useEffect(() => {
     const handleFocus = () => setAppFocused(true)
@@ -164,40 +172,62 @@ function App() {
   useEffect(() => {
     setSelectedReaction(
       isSpeaking
-        ? { name: 'talking', img: states[currentState].talking.img }
-        : states[currentState].normal
+        ? { name: 'talking', img: statesData[currentState].talking.img }
+        : statesData[currentState].normal
     )
-  }, [isSpeaking, currentState])
+  }, [isSpeaking, currentState, statesData])
 
   // Eventos twitch cambian el estado
   const handleTwitchEvent = (eventType, data) => {
     console.log('Evento recibido:', eventType, data)
 
-    switch (eventType) {
-      case 'disconnect':
-        setTemporaryState('default')
-        break
-      case 'follow':
-        setTemporaryState('follower')
-        break
-      case 'subscription':
-        setTemporaryState('subscriber')
-        break
-      case 'bits':
-        setTemporaryState('bits')
-        break
-      case 'chatMessage': {
-        const message = data.message.toLowerCase()
-        if (message.includes('!payaso')) setTemporaryState('payaso')
-        if (message.includes('!seguidor')) setTemporaryState('follower')
-        if (message.includes('!subscripcion')) setTemporaryState('subscriber')
-        if (message.includes('!bits')) setTemporaryState('bits')
-        break
-      }
-      default:
-        console.log('Evento no manejado:', eventType)
-        break
+    // Buscar la reacción cuyo config.event coincida con el eventType
+    const matchedKey = Object.entries(statesData).find(
+      ([, val]) => val.config.event === eventType
+    )?.[0]
+
+    if (matchedKey) {
+      setTemporaryState(matchedKey)
+      return
     }
+
+    // ChatMessage: comandos por texto
+    if (eventType === 'chatMessage') {
+      const message = data.message.toLowerCase()
+      // Buscar por comando en config.command
+      const matchedCommandKey = Object.entries(statesData).find(
+        ([, val]) => message.includes(val.config.command?.toLowerCase())
+      )?.[0]
+      if (matchedCommandKey) {
+        setTemporaryState(matchedCommandKey)
+        return
+      }
+    }
+
+    // Si no hay match, vuelve a default o loguea
+    if (eventType === 'disconnect') {
+      setTemporaryState('default')
+      return
+    }
+
+    console.log('Evento no manejado:', eventType)
+  }
+
+  // Función para actualizar la config de una reacción
+  const updateReactionConfig = (reactionName, newConfig) => {
+    setStatesData((prev) => {
+      const key = Object.keys(prev).find(
+        (k) => prev[k].normal.name === reactionName
+      )
+      if (!key) return prev
+      return {
+        ...prev,
+        [key]: {
+          ...prev[key],
+          config: { ...prev[key].config, ...newConfig }
+        }
+      }
+    })
   }
 
   return (
@@ -227,12 +257,12 @@ function App() {
 
         <ReactionSelector
           onSelect={(reaction) => {
-            const matchedState = Object.entries(states).find(
+            const matchedState = Object.entries(statesData).find(
               ([_, val]) => val.normal.img === reaction.img
             )
             setTemporaryState(matchedState?.[0] || 'default')
           }}
-          reactions={Object.values(states).map((s) => s.normal)}
+          reactions={Object.values(statesData).map((s) => s.normal)}
           openMenuReaction={openMenuReaction}
           setOpenMenuReaction={setOpenMenuReaction}
         />
@@ -242,10 +272,11 @@ function App() {
       {openMenuReaction && (
         <div className="fixed right-0 top-0 h-full w-[350px] bg-gray-100 border-l shadow-lg z-30 flex flex-col p-4">
           <ExpressionEditorMenu
-            reaction={Object.values(states)
-              .map((s) => s.normal)
+            reaction={Object.values(statesData)
+              .map((s) => ({ ...s.normal, config: s.config }))
               .find((r) => r.name === openMenuReaction)}
             onClose={() => setOpenMenuReaction(null)}
+            onConfigChange={updateReactionConfig}
           />
         </div>
       )}

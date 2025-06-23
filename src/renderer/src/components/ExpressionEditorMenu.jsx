@@ -1,10 +1,57 @@
 import PropTypes from 'prop-types'
-import React from 'react'
+import React, { useState, useEffect } from 'react'
+
+const twitchTriggers = [
+  { value: '', label: 'Ninguna' },
+  { value: 'follow', label: 'New Follow' },
+  { value: 'subscription', label: 'New Subscription' },
+  { value: 'bits', label: 'Cheered Bits' },
+  { value: 'point redemption', label: 'Channel Points Redeem' }
+]
 
 export default function ExpressionEditorMenu({
   reaction,
-  onClose
+  onClose,
+  onConfigChange
 }) {
+  const [localConfig, setLocalConfig] = useState({
+    command: '',
+    event: ''
+  })
+
+  useEffect(() => {
+    if (reaction) {
+      setLocalConfig({
+        command: reaction.config?.command || '',
+        event: reaction.config?.event || ''
+      })
+    }
+  }, [reaction])
+
+  if (!reaction) return null
+
+  const handleTriggerChange = (e) => {
+    setLocalConfig((prev) => ({
+      ...prev,
+      event: e.target.value || null
+    }))
+  }
+
+  const handleCommandChange = (e) => {
+    setLocalConfig((prev) => ({
+      ...prev,
+      command: e.target.value
+    }))
+  }
+
+  const handleSave = () => {
+    onConfigChange(reaction.name, {
+      command: localConfig.command,
+      event: localConfig.event === '' ? null : localConfig.event
+    })
+    onClose()
+  }
+
   return (
     <div className="absolute top-12 left-1/2 -translate-x-1/2 bg-gray-100 border rounded shadow-lg z-20 p-4 w-[340px]">
       <div className="flex flex-col gap-2">
@@ -17,22 +64,24 @@ export default function ExpressionEditorMenu({
           readOnly
         />
 
-        <label className="text-sm font-semibold">Twitch Trigger:</label>
-        <select className="border rounded px-2 py-1 mb-2">
-          <option>Ninguna</option>
-          <option>New Follow</option>
-          <option>New Subscription</option>
-          <option>Cheered Bits</option>
-          <option>Channel Points Redeem</option>
-        </select>
-
-        <label className="text-sm font-semibold">Hot Key:</label>
+        <label className="text-sm font-semibold">Comando:</label>
         <input
           type="text"
-          value="Ctrl + 1"
+          value={localConfig.command}
           className="border rounded px-2 py-1 mb-2"
-          readOnly
+          onChange={handleCommandChange}
         />
+
+        <label className="text-sm font-semibold">Twitch Trigger:</label>
+        <select
+          className="border rounded px-2 py-1 mb-2"
+          value={localConfig.event || ''}
+          onChange={handleTriggerChange}
+        >
+          {twitchTriggers.map((t) => (
+            <option key={t.value} value={t.value}>{t.label}</option>
+          ))}
+        </select>
 
         <label className="text-sm font-semibold">Imágenes:</label>
         <div className="grid grid-cols-2 gap-2">
@@ -44,16 +93,29 @@ export default function ExpressionEditorMenu({
             <span className="text-xs mb-1">Ojos abiertos - boca abierta</span>
             <img src={reaction.img} alt="abierta" width={80} height={80} />
           </div>
-          {/* Puedes agregar más imágenes según tu estructura */}
         </div>
 
-        <button
-          className="mt-4 py-2 px-4 rounded bg-red-500 text-white font-bold"
-          onClick={onClose}
-        >
-          Cerrar
-        </button>
+        <div className="flex gap-2 mt-4">
+          <button
+            className="py-2 px-4 rounded bg-green-600 text-white font-bold flex-1"
+            onClick={handleSave}
+          >
+            Guardar
+          </button>
+          <button
+            className="py-2 px-4 rounded bg-red-500 text-white font-bold flex-1"
+            onClick={onClose}
+          >
+            Cerrar
+          </button>
+        </div>
       </div>
     </div>
   )
+}
+
+ExpressionEditorMenu.propTypes = {
+  reaction: PropTypes.object,
+  onClose: PropTypes.func.isRequired,
+  onConfigChange: PropTypes.func.isRequired
 }
