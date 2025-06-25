@@ -79,16 +79,22 @@ function App() {
   const [selectedMic, setSelectedMic] = useState('default')
   const [bgColor, setBgColor] = useState('#00ff00')
   const [appFocused, setAppFocused] = useState(true)
-  const [micEnabled, setMicEnabled] = useState(true) // Nuevo estado
+  const [micEnabled, setMicEnabled] = useState(true)
   const [openMenuReaction, setOpenMenuReaction] = useState(null)
-  const [editorReaction, setEditorReaction] = useState(null)
+  
+  // Usamos useRef para mantener una referencia mutable a la última versión de statesData
+  const statesDataRef = useRef(null); 
   const [statesData, setStatesData] = useState(() => {
     const saved = localStorage.getItem('felipatube_states')
-    return saved ? JSON.parse(saved) : states
-  })
+    const initialData = saved ? JSON.parse(saved) : states;
+    statesDataRef.current = initialData; // Inicializa el ref con los datos cargados o por defecto
+    return initialData;
+  });
 
+  // Actualiza el ref cada vez que statesData cambia
   useEffect(() => {
     localStorage.setItem('felipatube_states', JSON.stringify(statesData))
+    statesDataRef.current = statesData; 
   }, [statesData])
 
   useEffect(() => {
@@ -103,15 +109,22 @@ function App() {
   }, [])
 
   // Cambia a estado y vuelve a default
-  const setTemporaryState = (newState) => {
+  const setTemporaryState = (newState, customTimeout = null) => {
     setCurrentState(newState)
 
     if (resetTimeoutRef.current) clearTimeout(resetTimeoutRef.current)
 
-    // Vuelve a default automáticamente
-    resetTimeoutRef.current = setTimeout(() => {
-      setCurrentState('default')
-    }, 5000)
+    // Accede a statesData a través del ref para obtener la última versión
+    const currentStates = statesDataRef.current;
+    const timeout = customTimeout !== null
+      ? customTimeout
+      : currentStates[newState]?.config?.timeout;
+
+    if (timeout > 0) {
+      resetTimeoutRef.current = setTimeout(() => {
+        setCurrentState('default')
+      }, timeout * 1000)
+    }
   }
 
   // Detección del micrófono
@@ -166,7 +179,7 @@ function App() {
       if (stream) stream.getTracks().forEach((track) => track.stop())
       audioContextRef.close()
     }
-  }, [selectedMic, micEnabled]) // <-- agrega micEnabled como dependencia
+  }, [selectedMic, micEnabled])
 
   // Efecto de micrófono hablando/no hablando.
   useEffect(() => {
@@ -175,19 +188,27 @@ function App() {
         ? { name: 'talking', img: statesData[currentState].talking.img }
         : statesData[currentState].normal
     )
-  }, [isSpeaking, currentState, statesData])
+  }, [isSpeaking, currentState, statesData]) // statesData aquí está bien porque setSelectedReaction siempre se reevalúa
 
   // Eventos twitch cambian el estado
-  const handleTwitchEvent = (eventType, data) => {
+  // Esta función no debe ser recreada en cada render si la pasamos como prop.
+  // Usaremos el ref para acceder a statesData.
+  const handleTwitchEvent = useRef((eventType, data) => {
     console.log('Evento recibido:', eventType, data)
 
+    // Accede a statesData a través del ref para obtener la última versión
+    const currentStates = statesDataRef.current;
+    let matchedStateKey = null;
+
     // Buscar la reacción cuyo config.event coincida con el eventType
-    const matchedKey = Object.entries(statesData).find(
+    matchedStateKey = Object.entries(currentStates).find(
       ([, val]) => val.config.event === eventType
     )?.[0]
 
-    if (matchedKey) {
-      setTemporaryState(matchedKey)
+    if (matchedStateKey) {
+      const timeout = currentStates[matchedStateKey].config.timeout;
+      // Llama a setTemporaryState, que también usa el ref
+      setTemporaryState(matchedStateKey, timeout);
       return
     }
 
@@ -195,11 +216,13 @@ function App() {
     if (eventType === 'chatMessage') {
       const message = data.message.toLowerCase()
       // Buscar por comando en config.command
-      const matchedCommandKey = Object.entries(statesData).find(
+      matchedStateKey = Object.entries(currentStates).find(
         ([, val]) => message.includes(val.config.command?.toLowerCase())
       )?.[0]
-      if (matchedCommandKey) {
-        setTemporaryState(matchedCommandKey)
+      if (matchedStateKey) {
+        const timeout = currentStates[matchedStateKey].config.timeout;
+        // Llama a setTemporaryState, que también usa el ref
+        setTemporaryState(matchedStateKey, timeout);
         return
       }
     }
@@ -211,7 +234,7 @@ function App() {
     }
 
     console.log('Evento no manejado:', eventType)
-  }
+  });
 
   // Función para actualizar la config de una reacción
   const updateReactionConfig = (reactionName, newConfig) => {
@@ -232,9 +255,11 @@ function App() {
 
   return (
     <div className="flex h-screen w-screen">
-      <TwitchEvents onEvent={handleTwitchEvent} />
+      {/* Pasamos handleTwitchEvent.current a onEvent */}
+      <TwitchEvents onEvent={handleTwitchEvent.current} /> 
       <div className="flex flex-col w-[320px] bg-gray-300 p-2">
-        <TwitchConnection onEvent={handleTwitchEvent} />
+        {/* Pasamos handleTwitchEvent.current a onEvent */}
+        <TwitchConnection onEvent={handleTwitchEvent.current} /> 
         <MicSelector selected={selectedMic} onSelect={setSelectedMic} />
 
         <label className="text-sm font-semibold mt-2">Color de fondo</label>
@@ -260,7 +285,9 @@ function App() {
             const matchedState = Object.entries(statesData).find(
               ([_, val]) => val.normal.img === reaction.img
             )
-            setTemporaryState(matchedState?.[0] || 'default')
+            // Cuando se selecciona manualmente, usamos el timeout de la configuración actual
+            // statesData aquí está bien porque esta función se recrea en cada render
+            setTemporaryState(matchedState?.[0] || 'default', statesData[matchedState?.[0] || 'default']?.config?.timeout)
           }}
           reactions={Object.values(statesData).map((s) => s.normal)}
           openMenuReaction={openMenuReaction}

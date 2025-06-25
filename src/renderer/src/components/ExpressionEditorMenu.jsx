@@ -30,6 +30,13 @@ export default function ExpressionEditorMenu({
 
   if (!reaction) return null
 
+  const handleNameChange = (e) => { // New function to handle name input changes
+    setLocalConfig((prev) => ({
+      ...prev,
+      name: e.target.value
+    }))
+  }
+
   const handleTriggerChange = (e) => {
     setLocalConfig((prev) => ({
       ...prev,
@@ -59,9 +66,9 @@ export default function ExpressionEditorMenu({
         <label className="text-sm font-semibold">Nombre:</label>
         <input
           type="text"
-          value={reaction.name}
+          value={localConfig.name} // Use local state for the value
           className="border rounded px-2 py-1 mb-2"
-          readOnly
+          onChange={handleNameChange} // Allow editing
         />
 
         <label className="text-sm font-semibold">Comando:</label>
