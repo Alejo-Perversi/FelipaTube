@@ -1,14 +1,14 @@
 import PropTypes from 'prop-types'
 import { useEffect, useState } from 'react'
 
-export default function Preview({ reaction, bgColor }) {
+export default function Preview({ reaction, bgColor, isTalking }) {
   const [animationKey, setAnimationKey] = useState(0)
 
   useEffect(() => {
-    if (reaction?.name === 'talking') {
+    if (isTalking) {
       setAnimationKey((prev) => prev + 1)
     }
-  }, [reaction])
+  }, [isTalking])
 
   return (
     <div
@@ -22,9 +22,7 @@ export default function Preview({ reaction, bgColor }) {
           alt={reaction.name}
           width={500}
           height={500}
-          className={`transition-transform duration-300 ${
-            reaction.name === 'talking' ? 'animate-bounce-y' : ''
-          }`}
+          className={`transition-transform duration-300 ${isTalking ? 'animate-bounce-y' : ''}`}
         />
       )}
     </div>
@@ -36,5 +34,6 @@ Preview.propTypes = {
     img: PropTypes.any,
     name: PropTypes.string
   }),
-  bgColor: PropTypes.string
+  bgColor: PropTypes.string,
+  isTalking: PropTypes.bool
 }

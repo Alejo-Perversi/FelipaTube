@@ -16,14 +16,14 @@ export default function MicSelector({ selected, onSelect }) {
 
   return (
     <div className="flex flex-col mb-4">
-      <label className="text-sm font-semibold mb-1">🎤 Micrófono:</label>
       <select
         value={selected}
         onChange={(e) => onSelect(e.target.value)}
-        className="p-1 border rounded"
+        className="p-1 border rounded w-100 truncate overflow-hidden text-ellipsis whitespace-nowrap"
+        style={{ maxWidth: '10rem' }} // fallback for non-Tailwind
       >
         {devices.map((device) => (
-          <option key={device.deviceId} value={device.deviceId}>
+          <option key={device.deviceId} value={device.deviceId} className="truncate">
             {device.label || `Microphone ${device.deviceId.slice(-4)}`}
           </option>
         ))}

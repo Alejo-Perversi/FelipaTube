@@ -3,7 +3,7 @@ import PropTypes from 'prop-types'
 export default function ReactionSelector({ onSelect, reactions, openMenuReaction, setOpenMenuReaction }) {
   return (
     <div className="w-[300px] bg-gray-300 p-2">
-      <h4 className="text-2xl font-bold mb-2">Expresiones</h4>
+      <h4 className="text-xl font-bold mb-2">Expresiones</h4>
       <div className="grid grid-cols-2 gap-4 mt-4">
         {reactions.map((r) => (
           <div
