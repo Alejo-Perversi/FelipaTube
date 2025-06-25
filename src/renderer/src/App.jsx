@@ -9,6 +9,8 @@ import ExpressionEditorMenu from './components/ExpressionEditorMenu'
 
 import micIcon from './assets/microphone.png'
 import micMuteIcon from './assets/mute-microphone.png'
+import gearIcon from './assets/gear.png'
+import twitchIcon from './assets/twitch.png'
 
 import Default_Closed_Mouth from './assets/Default_Closed_Mouth.png'
 import Default_Open_Mouth from './assets/Default_Open_Mouth.png'
@@ -84,6 +86,8 @@ function App() {
   const [appFocused, setAppFocused] = useState(true)
   const [micEnabled, setMicEnabled] = useState(true)
   const [openMenuReaction, setOpenMenuReaction] = useState(null)
+  const [showMenu, setShowMenu] = useState(false)
+  const [showTwitch, setShowTwitch] = useState(false)
 
   // Usamos useRef para mantener una referencia mutable a la última versión de statesData
   const statesDataRef = useRef(null)
@@ -268,65 +272,100 @@ function App() {
     })
   }
 
+  // Al abrir un menú, cerrar el otro
+  const handleShowMenu = () => {
+    setShowMenu((prev) => {
+      if (!prev) setShowTwitch(false)
+      return !prev
+    })
+  }
+  const handleShowTwitch = () => {
+    setShowTwitch((prev) => {
+      if (!prev) setShowMenu(false)
+      return !prev
+    })
+  }
+
   return (
-    <div className="flex h-screen w-screen">
-      {/* Pasamos handleTwitchEvent.current a onEvent */}
-      <TwitchEvents onEvent={handleTwitchEvent.current} />
-      <div className="flex flex-col w-[320px] bg-gray-300 p-2">
-        {/* Pasamos handleTwitchEvent.current a onEvent */}
-        <TwitchConnection onEvent={handleTwitchEvent.current} />
-
-        {/* Config Micrófono */}
-        <label className="text-sm font-semibold mt-2">Micrófono:</label>
-        <div className="flex items-center gap-2 mb-2">
-          <button
-            className={`p-2 rounded-full border-2 ${micEnabled ? 'border-green-500' : 'border-gray-400'} bg-white hover:bg-gray-200 transition flex items-center justify-center`}
-            onClick={() => setMicEnabled((v) => !v)}
-            title={micEnabled ? 'Desactivar micrófono' : 'Activar micrófono'}
-            style={{ width: 40, height: 40, minWidth: 40, minHeight: 40 }}
-          >
-            <img
-              src={micEnabled ? micIcon : micMuteIcon}
-              alt={micEnabled ? 'Micrófono activado' : 'Micrófono desactivado'}
-              width={24}
-              height={24}
-              style={{ objectFit: 'contain', display: 'block' }}
-            />
-          </button>
-          <div className="flex-1">
-            <MicSelector selected={selectedMic} onSelect={setSelectedMic} />
-          </div>
-        </div>
-        <label className="text-sm font-semibold mt-2">Color de fondo:</label>
-        <input
-          type="color"
-          value={bgColor}
-          onChange={(e) => setBgColor(e.target.value)}
-          className="w-full rounded"
-          style={{ height: '2rem', minHeight: '2rem', maxHeight: '2rem' }}
-        />
-
-        <ReactionSelector
-          onSelect={(reaction) => {
-            const matchedState = Object.entries(statesData).find(
-              ([_, val]) => val.normal.img === reaction.img
-            )
-            // Cuando se selecciona manualmente, usamos el timeout de la configuración actual
-            // statesData aquí está bien porque esta función se recrea en cada render
-            setTemporaryState(
-              matchedState?.[0] || 'default',
-              statesData[matchedState?.[0] || 'default']?.config?.timeout
-            )
-          }}
-          reactions={Object.values(statesData).map((s) => s.normal)}
-          openMenuReaction={openMenuReaction}
-          setOpenMenuReaction={setOpenMenuReaction}
-        />
+    <div className="flex h-screen w-screen relative">
+      {/* Iconos flotantes */}
+      <div className="absolute top-4 right-4 z-40 flex flex-col gap-2">
+        <button
+          className="bg-white rounded-full p-2 shadow hover:bg-gray-200 border border-gray-300 transition flex items-center justify-center"
+          style={{ width: 48, height: 48 }}
+          onClick={handleShowMenu}
+          title="Abrir configuración"
+        >
+          <img src={gearIcon} alt="Configuración" width={28} height={28} style={{ display: 'block' }} />
+        </button>
+        <button
+          className="bg-white rounded-full p-2 shadow hover:bg-gray-200 border border-gray-300 transition flex items-center justify-center"
+          style={{ width: 48, height: 48 }}
+          onClick={handleShowTwitch}
+          title="Conectar Twitch"
+        >
+          <img src={twitchIcon} alt="Twitch" width={28} height={28} style={{ display: 'block' }} />
+        </button>
       </div>
-      <Preview reaction={selectedReaction} bgColor={bgColor} isTalking={isSpeaking} />
+      <TwitchEvents onEvent={handleTwitchEvent.current} />
+      {/* TwitchConnection siempre montado, solo visible si showTwitch */}
+      <div style={{ display: showTwitch ? 'block' : 'none' }} className="fixed left-0 top-0 h-full w-[320px] bg-gray-300 p-2 z-40">
+        <TwitchConnection onEvent={handleTwitchEvent.current} />
+      </div>
+      {/* Menú lateral de configuración */}
+      {showMenu && (
+        <div className="flex flex-col w-[320px] bg-gray-300 p-2 h-full z-30">
+          <label className="text-sm font-semibold mt-2">Micrófono:</label>
+          <div className="flex items-center gap-2 mb-2">
+            <button
+              className={`p-2 rounded-full border-2 ${micEnabled ? 'border-green-500' : 'border-gray-400'} bg-white hover:bg-gray-200 transition flex items-center justify-center`}
+              onClick={() => setMicEnabled((v) => !v)}
+              title={micEnabled ? 'Desactivar micrófono' : 'Activar micrófono'}
+              style={{ width: 40, height: 40, minWidth: 40, minHeight: 40 }}
+            >
+              <img
+                src={micEnabled ? micIcon : micMuteIcon}
+                alt={micEnabled ? 'Micrófono activado' : 'Micrófono desactivado'}
+                width={24}
+                height={24}
+                style={{ objectFit: 'contain', display: 'block' }}
+              />
+            </button>
+            <div className="flex-1">
+              <MicSelector selected={selectedMic} onSelect={setSelectedMic} />
+            </div>
+          </div>
+          <label className="text-sm font-semibold mt-2">Color de fondo:</label>
+          <input
+            type="color"
+            value={bgColor}
+            onChange={(e) => setBgColor(e.target.value)}
+            className="w-full rounded"
+            style={{ height: '2rem', minHeight: '2rem', maxHeight: '2rem' }}
+          />
+          <ReactionSelector
+            onSelect={(reaction) => {
+              const matchedState = Object.entries(statesData).find(
+                ([_, val]) => val.normal.img === reaction.img
+              )
+              setTemporaryState(
+                matchedState?.[0] || 'default',
+                statesData[matchedState?.[0] || 'default']?.config?.timeout
+              )
+            }}
+            reactions={Object.values(statesData).map((s) => s.normal)}
+            openMenuReaction={openMenuReaction}
+            setOpenMenuReaction={setOpenMenuReaction}
+          />
+        </div>
+      )}
+      {/* Avatar siempre visible */}
+      <div className="flex-1 flex items-center justify-center min-h-screen">
+        <Preview reaction={selectedReaction} bgColor={bgColor} isTalking={isSpeaking} />
+      </div>
       {/* Menú editor a la derecha */}
       {openMenuReaction && (
-        <div className="fixed right-0 top-0 h-full w-[350px] bg-gray-300 border-l shadow-lg z-30 flex flex-col p-4">
+        <div className="fixed right-0 top-0 h-full w-[350px] bg-gray-300 border-l shadow-lg z-50 flex flex-col p-4">
           <ExpressionEditorMenu
             reaction={Object.values(statesData)
               .map((s) => ({ ...s.normal, config: s.config, talkingImg: s.talking.img }))
