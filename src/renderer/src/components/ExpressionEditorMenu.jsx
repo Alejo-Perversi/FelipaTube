@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types'
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 
 const twitchTriggers = [
   { value: '', label: 'Ninguna' },
@@ -9,28 +9,40 @@ const twitchTriggers = [
   { value: 'point redemption', label: 'Channel Points Redeem' }
 ]
 
-export default function ExpressionEditorMenu({
-  reaction,
-  onClose,
-  onConfigChange
-}) {
+export default function ExpressionEditorMenu({ reaction, onClose, onConfigChange, allReactions }) {
   const [localConfig, setLocalConfig] = useState({
+    name: '',
     command: '',
-    event: ''
+    event: '',
+    img: '',
+    talkingImg: ''
   })
 
+  const lastReactionName = useRef(null)
+
   useEffect(() => {
-    if (reaction) {
+    if (reaction && reaction.name !== lastReactionName.current) {
       setLocalConfig({
+        name: reaction.name || '',
         command: reaction.config?.command || '',
-        event: reaction.config?.event || ''
+        event: reaction.config?.event || '',
+        img: reaction.img || '',
+        talkingImg: reaction.talkingImg || ''
       })
+      lastReactionName.current = reaction.name
     }
   }, [reaction])
 
   if (!reaction) return null
 
-  const handleNameChange = (e) => { // New function to handle name input changes
+  // Get all used events except for this reaction
+  const usedEvents = (allReactions || [])
+    .filter((r) => r.name !== reaction.name)
+    .map((r) => r.config?.event)
+    .filter(Boolean)
+
+  const handleNameChange = (e) => {
+    // New function to handle name input changes
     setLocalConfig((prev) => ({
       ...prev,
       name: e.target.value
@@ -40,7 +52,7 @@ export default function ExpressionEditorMenu({
   const handleTriggerChange = (e) => {
     setLocalConfig((prev) => ({
       ...prev,
-      event: e.target.value || null
+      event: e.target.value || ''
     }))
   }
 
@@ -51,10 +63,41 @@ export default function ExpressionEditorMenu({
     }))
   }
 
+  const handleImgChange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = (ev) => {
+        setLocalConfig((prev) => ({
+          ...prev,
+          img: ev.target.result // base64 string
+        }))
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handleTalkingImgChange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = (ev) => {
+        setLocalConfig((prev) => ({
+          ...prev,
+          talkingImg: ev.target.result // base64 string
+        }))
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
   const handleSave = () => {
     onConfigChange(reaction.name, {
+      name: localConfig.name,
       command: localConfig.command,
-      event: localConfig.event === '' ? null : localConfig.event
+      event: localConfig.event === '' ? null : localConfig.event,
+      img: localConfig.img,
+      talkingImg: localConfig.talkingImg
     })
     onClose()
   }
@@ -86,19 +129,48 @@ export default function ExpressionEditorMenu({
           onChange={handleTriggerChange}
         >
           {twitchTriggers.map((t) => (
-            <option key={t.value} value={t.value}>{t.label}</option>
+            <option
+              key={t.value}
+              value={t.value}
+              disabled={t.value && usedEvents.includes(t.value)}
+            >
+              {t.label}
+              {t.value && usedEvents.includes(t.value) ? ' (Usado)' : ''}
+            </option>
           ))}
         </select>
 
         <label className="text-sm font-semibold">Imágenes:</label>
         <div className="grid grid-cols-2 gap-2">
           <div className="flex flex-col items-center border p-1">
-            <span className="text-xs mb-1">Ojos abiertos - boca cerrada</span>
-            <img src={reaction.img} alt="cerrada" width={80} height={80} />
+            <span className="text-s mb-1">Silencio</span>
+            <img src={localConfig.img} alt="cerrada" width={80} height={80} />
+            <label className="mt-2 w-full flex justify-center">
+              <span className="bg-gray-500 text-white px-2 py-1 rounded cursor-pointer text-xs">
+                Cambiar imagen
+              </span>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImgChange}
+                style={{ display: 'none' }}
+              />
+            </label>
           </div>
           <div className="flex flex-col items-center border p-1">
-            <span className="text-xs mb-1">Ojos abiertos - boca abierta</span>
-            <img src={reaction.img} alt="abierta" width={80} height={80} />
+            <span className="text-s mb-1">Hablando</span>
+            <img src={localConfig.talkingImg} alt="abierta" width={80} height={80} />
+            <label className="mt-2 w-full flex justify-center">
+              <span className="bg-gray-500 text-white px-2 py-1 rounded cursor-pointer text-xs">
+                Cambiar Imagen
+              </span>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleTalkingImgChange}
+                style={{ display: 'none' }}
+              />
+            </label>
           </div>
         </div>
 
@@ -124,5 +196,6 @@ export default function ExpressionEditorMenu({
 ExpressionEditorMenu.propTypes = {
   reaction: PropTypes.object,
   onClose: PropTypes.func.isRequired,
-  onConfigChange: PropTypes.func.isRequired
+  onConfigChange: PropTypes.func.isRequired,
+  allReactions: PropTypes.array
 }
