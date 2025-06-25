@@ -30,6 +30,11 @@ export default function ReactionSelector({ onSelect, reactions, openMenuReaction
           <span className="mt-2 text-center text-sm font-medium text-gray-400">Agregar</span>
         </div> */}
       </div>
+
+      <h1 className="mt-4 text-lg font-semibold text-center text-purple-500 hover:text-purple-700 transition-colors">
+        Click derecho en la imagen que quieras para ver configuraciones
+      </h1>
+
     </div>
   )
 }
