@@ -9,29 +9,56 @@ const twitchTriggers = [
   { value: 'point redemption', label: 'Channel Points Redeem' }
 ]
 
-export default function ExpressionEditorMenu({ reaction, onClose, onConfigChange, allReactions }) {
+export default function ExpressionEditorMenu({
+  reaction,
+  onClose,
+  onConfigChange,
+  allReactions,
+  onDelete,
+  addingNew
+}) {
   const [localConfig, setLocalConfig] = useState({
     name: '',
     command: '',
     event: '',
     img: '',
-    talkingImg: ''
+    talkingImg: '',
+    timeout: reaction.config?.timeout ?? -1
   })
+  const firstInputRef = useRef(null)
 
   const lastReactionName = useRef(null)
 
+  const canDelete = reaction && reaction.name && !['Default'].includes(reaction.name)
+  
   useEffect(() => {
-    if (reaction && reaction.name !== lastReactionName.current) {
+    if (firstInputRef.current) {
+      firstInputRef.current.focus()
+    }
+  }, [reaction, addingNew])
+
+  useEffect(() => {
+    if (reaction && !addingNew) {
       setLocalConfig({
         name: reaction.name || '',
         command: reaction.config?.command || '',
         event: reaction.config?.event || '',
         img: reaction.img || '',
-        talkingImg: reaction.talkingImg || ''
+        talkingImg: reaction.talkingImg || '',
+        timeout: reaction.config?.timeout ?? -1
       })
-      lastReactionName.current = reaction.name
     }
-  }, [reaction])
+    if (addingNew) {
+      setLocalConfig({
+        name: '',
+        command: '',
+        event: '',
+        img: '',
+        talkingImg: '',
+        timeout: 5
+      })
+    }
+  }, [reaction, addingNew])
 
   if (!reaction) return null
 
@@ -97,7 +124,8 @@ export default function ExpressionEditorMenu({ reaction, onClose, onConfigChange
       command: localConfig.command,
       event: localConfig.event === '' ? null : localConfig.event,
       img: localConfig.img,
-      talkingImg: localConfig.talkingImg
+      talkingImg: localConfig.talkingImg,
+      timeout: localConfig.timeout === '' ? -1 : Number(localConfig.timeout)
     })
     onClose()
   }
@@ -108,6 +136,7 @@ export default function ExpressionEditorMenu({ reaction, onClose, onConfigChange
         <h3 className="font-bold text-lg mb-2">Editor Expresión</h3>
         <label className="text-sm font-semibold">Nombre:</label>
         <input
+          ref={firstInputRef}
           type="text"
           value={localConfig.name} // Use local state for the value
           className="border rounded px-2 py-1 mb-2"
@@ -139,6 +168,20 @@ export default function ExpressionEditorMenu({ reaction, onClose, onConfigChange
             </option>
           ))}
         </select>
+
+        <label className="text-sm font-semibold">Timeout Twitch Trigger (seg.):</label>
+        <input
+          type="number"
+          min={-1}
+          value={localConfig.timeout ?? ''}
+          className="border rounded px-2 py-1 mb-2"
+          onChange={(e) =>
+            setLocalConfig((prev) => ({
+              ...prev,
+              timeout: e.target.value === '' ? '' : Number(e.target.value)
+            }))
+          }
+        />
 
         <label className="text-sm font-semibold">Imágenes:</label>
         <div className="grid grid-cols-2 gap-2">
@@ -188,6 +231,18 @@ export default function ExpressionEditorMenu({ reaction, onClose, onConfigChange
             Cerrar
           </button>
         </div>
+        {canDelete && (
+          <button
+            className="mt-2 py-2 px-4 rounded bg-red-700 text-white font-bold"
+            onClick={() => {
+              if (window.confirm('¿Seguro que quieres eliminar esta expresión?')) {
+                onDelete(reaction.reactionKey)
+              }
+            }}
+          >
+            Eliminar
+          </button>
+        )}
       </div>
     </div>
   )
@@ -197,5 +252,6 @@ ExpressionEditorMenu.propTypes = {
   reaction: PropTypes.object,
   onClose: PropTypes.func.isRequired,
   onConfigChange: PropTypes.func.isRequired,
-  allReactions: PropTypes.array
+  allReactions: PropTypes.array,
+  onDelete: PropTypes.func
 }

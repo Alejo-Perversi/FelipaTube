@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 
 import ReactionSelector from './components/ReactionSelector'
 import Preview from './components/Preview'
@@ -84,9 +84,16 @@ function App() {
   const [appFocused, setAppFocused] = useState(true)
   const [micEnabled, setMicEnabled] = useState(true)
   const [openMenuReaction, setOpenMenuReaction] = useState(null)
+  const [addingNew, setAddingNew] = useState(false)
+  const [editorLoading, setEditorLoading] = useState(false)
+  const [forceRerender, setForceRerender] = useState(0)
 
   // Usamos useRef para mantener una referencia mutable a la última versión de statesData
   const statesDataRef = useRef(null)
+  const [manualDefaultState, setManualDefaultState] = useState(
+    () => localStorage.getItem('felipatube_manualDefaultState') || 'default'
+  )
+  const manualDefaultStateRef = useRef(manualDefaultState)
   const [statesData, setStatesData] = useState(() => {
     const saved = localStorage.getItem('felipatube_states')
     const initialData = saved ? JSON.parse(saved) : states
@@ -111,20 +118,26 @@ function App() {
     }
   }, [])
 
+  useEffect(() => {
+    manualDefaultStateRef.current = manualDefaultState
+  }, [manualDefaultState])
+
   // Cambia a estado y vuelve a default
   const setTemporaryState = (newState, customTimeout = null) => {
     setCurrentState(newState)
 
     if (resetTimeoutRef.current) clearTimeout(resetTimeoutRef.current)
 
-    // Accede a statesData a través del ref para obtener la última versión
     const currentStates = statesDataRef.current
     const timeout =
       customTimeout !== null ? customTimeout : currentStates[newState]?.config?.timeout
 
     if (timeout > 0) {
       resetTimeoutRef.current = setTimeout(() => {
-        setCurrentState('default')
+        const fallback = statesDataRef.current[manualDefaultStateRef.current]
+          ? manualDefaultStateRef.current
+          : 'default'
+        setCurrentState(fallback)
       }, timeout * 1000)
     }
   }
@@ -268,6 +281,27 @@ function App() {
     })
   }
 
+  const editorReaction = useMemo(() => {
+    if (addingNew) {
+      return {
+        name: '',
+        img: '',
+        talkingImg: '',
+        config: { command: '', event: '', timeout: 5 },
+        reactionKey: null
+      }
+    }
+    if (!openMenuReaction) return null
+    const s = statesData[openMenuReaction]
+    if (!s) return null
+    return {
+      ...s.normal,
+      config: s.config,
+      talkingImg: s.talking.img,
+      reactionKey: openMenuReaction
+    }
+  }, [addingNew, openMenuReaction, statesData])
+
   return (
     <div className="flex h-screen w-screen">
       {/* Pasamos handleTwitchEvent.current a onEvent */}
@@ -308,37 +342,104 @@ function App() {
 
         <ReactionSelector
           onSelect={(reaction) => {
+            // Find the key for the selected reaction
             const matchedState = Object.entries(statesData).find(
-              ([_, val]) => val.normal.img === reaction.img
+              ([key, s]) => s.normal.img === reaction.img
             )
-            // Cuando se selecciona manualmente, usamos el timeout de la configuración actual
-            // statesData aquí está bien porque esta función se recrea en cada render
-            setTemporaryState(
-              matchedState?.[0] || 'default',
-              statesData[matchedState?.[0] || 'default']?.config?.timeout
-            )
+            const newDefaultKey = matchedState?.[0] || 'default'
+            setManualDefaultState(newDefaultKey)
+            localStorage.setItem('felipatube_manualDefaultState', newDefaultKey)
+            setCurrentState(newDefaultKey)
           }}
           reactions={Object.values(statesData).map((s) => s.normal)}
           openMenuReaction={openMenuReaction}
+          statesData={statesData}
           setOpenMenuReaction={setOpenMenuReaction}
+          onAdd={() => setAddingNew(true)}
         />
       </div>
       <Preview reaction={selectedReaction} bgColor={bgColor} isTalking={isSpeaking} />
       {/* Menú editor a la derecha */}
-      {openMenuReaction && (
-        <div className="fixed right-0 top-0 h-full w-[350px] bg-gray-300 border-l shadow-lg z-30 flex flex-col p-4">
+      {(openMenuReaction || addingNew) && !editorLoading && (
+        <div
+          key={forceRerender}
+          className="fixed right-0 top-0 h-full w-[350px] bg-gray-300 border-l shadow-lg z-30 flex flex-col p-4"
+        >
           <ExpressionEditorMenu
-            reaction={Object.values(statesData)
-              .map((s) => ({ ...s.normal, config: s.config, talkingImg: s.talking.img }))
-              .find((r) => r.name === openMenuReaction)}
-            onClose={() => setOpenMenuReaction(null)}
-            onConfigChange={updateReactionConfig}
+            key={addingNew ? 'new' : editorReaction?.reactionKey}
+            reaction={editorReaction}
+            onClose={() => {
+              setOpenMenuReaction(null)
+              setAddingNew(false)
+            }}
+            onConfigChange={(name, config) => {
+              if (addingNew) {
+                // Generate a unique key for the new state
+                const key = name.toLowerCase().replace(/\s+/g, '_') + '_' + Date.now()
+                setStatesData((prev) => ({
+                  ...prev,
+                  [key]: {
+                    normal: { name: config.name, img: config.img },
+                    talking: { name: config.name, img: config.talkingImg },
+                    config: {
+                      label: config.name,
+                      command: config.command,
+                      event: config.event,
+                      timeout: config.timeout
+                    }
+                  }
+                }))
+              } else {
+                updateReactionConfig(name, config)
+              }
+              setAddingNew(false)
+              setOpenMenuReaction(null)
+            }}
             allReactions={Object.values(statesData).map((s) => ({
               ...s.normal,
               config: s.config,
               talkingImg: s.talking.img
             }))}
+            onDelete={(reactionKey) => {
+              setEditorLoading(true)
+              setOpenMenuReaction(null)
+              setAddingNew(false)
+              setTimeout(() => {
+                setStatesData((prev) => {
+                  if (!reactionKey) return prev
+                  const newData = { ...prev }
+                  delete newData[reactionKey]
+
+                  // If the deleted state is the current or manual default, pick a new one
+                  if (currentState === reactionKey || manualDefaultState === reactionKey) {
+                    const fallbackKey = newData['default']
+                      ? 'default'
+                      : Object.keys(newData)[0] || null
+
+                    setCurrentState(fallbackKey)
+                    setManualDefaultState(fallbackKey)
+                    localStorage.setItem('felipatube_manualDefaultState', fallbackKey)
+                  }
+                  return newData
+                })
+                setEditorLoading(false)
+                setForceRerender((x) => x + 1)
+                window.dispatchEvent(new Event('blur'))
+                setTimeout(() => {
+                  window.dispatchEvent(new Event('focus'))
+                }, 50)
+              }, 1000)
+            }}
+            addingNew={addingNew}
           />
+        </div>
+      )}
+      {editorLoading && (
+        <div className="fixed right-0 top-0 h-full w-[350px] bg-gray-300 border-l shadow-lg z-30 flex flex-col items-center justify-center p-4">
+          <div className="flex flex-col items-center justify-center h-full w-full">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-purple-500 border-solid mb-4"></div>
+            <span className="text-lg font-semibold text-purple-700">Eliminando...</span>
+          </div>
         </div>
       )}
     </div>

@@ -1,51 +1,83 @@
 import PropTypes from 'prop-types'
+import addIcon from '../assets/add.png'
 
-export default function ReactionSelector({ onSelect, reactions, openMenuReaction, setOpenMenuReaction }) {
+function forceWindowRefocus() {
+  const { remote } = window.require('electron')
+  remote.getCurrentWindow().blur()
+  setTimeout(() => {
+    remote.getCurrentWindow().focus()
+  }, 100)
+}
+
+export default function ReactionSelector({
+  onSelect,
+  reactions,
+  openMenuReaction,
+  setOpenMenuReaction,
+  onAdd,
+  statesData
+}) {
   return (
     <div className="w-[300px] bg-gray-300 p-2">
       <h4 className="text-xl font-bold mb-2">Expresiones</h4>
-      <div className="grid grid-cols-2 gap-4 mt-4">
-        {reactions.map((r) => (
+      <div
+        className="overflow-y-auto overflow-x-hidden"
+        style={{ maxHeight: '480px', width: '100%' }}
+      >
+        <div className="grid grid-cols-2 gap-4 mt-4">
+          {reactions.map((r) => (
+            <div
+              key={r.name}
+              className="relative bg-white rounded-xl shadow p-2 flex flex-col items-center cursor-pointer hover:bg-gray-200 transition-colors"
+              onClick={() => onSelect(r)}
+              onContextMenu={(e) => {
+                e.preventDefault()
+                const matched = Object.entries(statesData).find(([, s]) => s.normal.img === r.img)
+                if (matched) setOpenMenuReaction(matched[0])
+                forceWindowRefocus()
+              }}
+            >
+              <img src={r.img} alt={r.name} width={100} height={100} />
+              <span className="mt-2 text-center text-sm font-medium">{r.name}</span>
+            </div>
+          ))}
+          {/* Card para agregar nueva reacción */}
           <div
-            key={r.name}
-            className="relative bg-white rounded-xl shadow p-2 flex flex-col items-center cursor-pointer hover:scale-105 transition-transform"
-            onClick={() => onSelect(r)}
+            className="relative bg-white rounded-xl shadow p-2 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors"
+            onClick={() => {
+              onAdd()
+              forceWindowRefocus()
+            }}
             onContextMenu={(e) => {
               e.preventDefault()
-              setOpenMenuReaction(r.name)
+              onAdd()
+              forceWindowRefocus()
             }}
           >
-            <img src={r.img} alt={r.name} width={100} height={100} />
-            <span className="mt-2 text-center text-sm font-medium">{r.name}</span>
+            <img src={addIcon} alt="Nueva Expresión" width={60} height={60} />
+            <span className="mt-2 text-center text-sm font-medium text-gray-500">
+              Nueva Expresión
+            </span>
           </div>
-        ))}
-        {/* Card para agregar nueva reacción */}
-        {/* <div
-          className="bg-white rounded-xl shadow p-2 flex flex-col items-center justify-center cursor-pointer hover:scale-105 transition-transform"
-          onClick={onAdd}
-        >
-          <div className="flex items-center justify-center w-16 h-16 border-2 border-gray-400 rounded-full">
-            <span className="text-4xl text-gray-400">+</span>
-          </div>
-          <span className="mt-2 text-center text-sm font-medium text-gray-400">Agregar</span>
-        </div> */}
+        </div>
       </div>
-
       <h1 className="mt-4 text-lg font-semibold text-center text-purple-500 hover:text-purple-700 transition-colors">
         Click derecho en la imagen que quieras para ver configuraciones
       </h1>
-
     </div>
   )
 }
 
 ReactionSelector.propTypes = {
   onSelect: PropTypes.func.isRequired,
-  // onAdd: PropTypes.func,
   reactions: PropTypes.arrayOf(
     PropTypes.shape({
       name: PropTypes.string.isRequired,
       img: PropTypes.any.isRequired
     })
-  ).isRequired
+  ).isRequired,
+  openMenuReaction: PropTypes.string,
+  setOpenMenuReaction: PropTypes.func,
+  onAdd: PropTypes.func,
+  statesData: PropTypes.object
 }
