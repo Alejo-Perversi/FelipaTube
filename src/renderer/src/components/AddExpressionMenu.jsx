@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const twitchTriggers = [
   { value: '', label: 'Ninguna' },
@@ -15,11 +15,22 @@ export default function AddExpressionMenu({ onClose, onAddExpression, allReactio
     name: '',
     command: '',
     event: '',
-    customEvent: '',
     img: '',
     talkingImg: '',
     timeout: 5
   })
+
+  // Resetear el estado cuando se abre el menú
+  useEffect(() => {
+    setLocalConfig({
+      name: '',
+      command: '',
+      event: '',
+      img: '',
+      talkingImg: '',
+      timeout: 5
+    })
+  }, [])
 
   // Get all used events
   const usedEvents = (allReactions || [])
@@ -36,8 +47,7 @@ export default function AddExpressionMenu({ onClose, onAddExpression, allReactio
   const handleTriggerChange = (e) => {
     setLocalConfig((prev) => ({
       ...prev,
-      event: e.target.value || '',
-      customEvent: e.target.value === 'custom' ? prev.customEvent : ''
+      event: e.target.value || ''
     }))
   }
 
@@ -119,7 +129,7 @@ export default function AddExpressionMenu({ onClose, onAddExpression, allReactio
     }
 
     // Validar que el evento no esté duplicado
-    if (localConfig.event && localConfig.event !== 'custom') {
+    if (localConfig.event) {
       if (usedEvents.includes(localConfig.event)) {
         alert('Ya existe una expresión con ese evento de Twitch')
         return
@@ -138,7 +148,7 @@ export default function AddExpressionMenu({ onClose, onAddExpression, allReactio
   }
 
   return (
-    <div className="absolute top-12 left-1/2 -translate-x-1/2 bg-gray-100 border rounded shadow-lg z-20 p-4 w-[340px]">
+    <div className="absolute top-12 left-1/2 -translate-x-1/2 bg-gray-100 border rounded shadow-lg z-20 p-4 w-[320px] max-w-[90vw]">
       <div className="flex flex-col gap-2">
         <h3 className="font-bold text-lg mb-2">Agregar Nueva Expresión</h3>
         
@@ -160,7 +170,7 @@ export default function AddExpressionMenu({ onClose, onAddExpression, allReactio
           placeholder="Ej: !feliz, !triste..."
         />
 
-        <label className="text-sm font-semibold">Twitch Trigger:</label>
+        <label className="text-sm font-semibold">Evento Twitch:</label>
         <select
           className="border rounded px-2 py-1 mb-2"
           value={localConfig.event || ''}

@@ -21,7 +21,6 @@ export default function ExpressionEditorMenu({
     name: '',
     command: '',
     event: '',
-    customEvent: '',
     img: '',
     talkingImg: ''
   })
@@ -30,14 +29,10 @@ export default function ExpressionEditorMenu({
 
   useEffect(() => {
     if (reaction && reaction.name !== lastReactionName.current) {
-      const isCustomEvent =
-        reaction.config?.event &&
-        !['follow', 'subscription', 'bits', 'point redemption'].includes(reaction.config.event)
       setLocalConfig({
         name: reaction.name || '',
         command: reaction.config?.command || '',
-        event: isCustomEvent ? 'custom' : reaction.config?.event || '',
-        customEvent: isCustomEvent ? reaction.config?.event : '',
+        event: reaction.config?.event || '',
         img: reaction.img || '',
         talkingImg: reaction.talkingImg || ''
       })
@@ -64,8 +59,7 @@ export default function ExpressionEditorMenu({
   const handleTriggerChange = (e) => {
     setLocalConfig((prev) => ({
       ...prev,
-      event: e.target.value || '',
-      customEvent: e.target.value === 'custom' ? prev.customEvent : ''
+      event: e.target.value || ''
     }))
   }
 
@@ -116,7 +110,7 @@ export default function ExpressionEditorMenu({
   }
 
   return (
-    <div className="absolute top-12 left-1/2 -translate-x-1/2 bg-gray-100 border rounded shadow-lg z-20 p-4 w-[340px]">
+    <div className="absolute top-12 left-1/2 -translate-x-1/2 bg-gray-100 border rounded shadow-lg z-20 p-4 w-[320px] max-w-[90vw]">
       <div className="flex flex-col gap-2">
         <h3 className="font-bold text-lg mb-2">Editor Expresión</h3>
         <label className="text-sm font-semibold">Nombre:</label>
@@ -135,7 +129,7 @@ export default function ExpressionEditorMenu({
           onChange={handleCommandChange}
         />
 
-        <label className="text-sm font-semibold">Twitch Trigger:</label>
+        <label className="text-sm font-semibold">Evento Twitch:</label>
         <select
           className="border rounded px-2 py-1 mb-2"
           value={localConfig.event || ''}
@@ -159,7 +153,7 @@ export default function ExpressionEditorMenu({
         <div className="grid grid-cols-2 gap-2">
           <div className="flex flex-col items-center border p-1">
             <span className="text-s mb-1">Silencio</span>
-            <img src={localConfig.img} alt="cerrada" width={80} height={80} />
+            <img src={localConfig.img || null} alt="cerrada" width={80} height={80} />
             <label className="mt-2 w-full flex justify-center">
               <span className="bg-gray-500 text-white px-2 py-1 rounded cursor-pointer text-xs">
                 Cambiar imagen
@@ -174,7 +168,7 @@ export default function ExpressionEditorMenu({
           </div>
           <div className="flex flex-col items-center border p-1">
             <span className="text-s mb-1">Hablando</span>
-            <img src={localConfig.talkingImg} alt="abierta" width={80} height={80} />
+            <img src={localConfig.talkingImg || null} alt="abierta" width={80} height={80} />
             <label className="mt-2 w-full flex justify-center">
               <span className="bg-gray-500 text-white px-2 py-1 rounded cursor-pointer text-xs">
                 Cambiar Imagen
@@ -210,7 +204,7 @@ export default function ExpressionEditorMenu({
           !['Default', 'Follower', 'Subscription', 'Bits', 'Payaso'].includes(reaction.name) && (
             <div className="mt-4 pt-4 border-t border-gray-300">
               <button
-                className="w-full py-2 px-4 rounded bg-red-700 text-white font-bold hover:bg-red-800 transition-colors"
+                className="w-full py-2 px-4 rounded bg-red-500 text-white font-bold hover:bg-red-800 transition-colors"
                 onClick={() => {
                   if (
                     window.confirm(

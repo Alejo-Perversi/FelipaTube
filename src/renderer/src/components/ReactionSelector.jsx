@@ -7,7 +7,7 @@ export default function ReactionSelector({ onSelect, reactions, setOpenMenuReact
       <div className="grid grid-cols-2 gap-4 mt-4">
         {reactions.map((r) => (
           <div
-            key={r.name}
+            key={r.key || r.name}
             className="relative bg-white rounded-xl shadow p-2 flex flex-col items-center cursor-pointer hover:scale-105 transition-transform"
             onClick={() => onSelect(r)}
             onContextMenu={(e) => {
@@ -15,7 +15,7 @@ export default function ReactionSelector({ onSelect, reactions, setOpenMenuReact
               setOpenMenuReaction(r.name)
             }}
           >
-            <img src={r.img} alt={r.name} width={100} height={100} />
+            <img src={r.img || null} alt={r.name} width={100} height={100} />
             <span className="mt-2 text-center text-sm font-medium">{r.name}</span>
           </div>
         ))}
