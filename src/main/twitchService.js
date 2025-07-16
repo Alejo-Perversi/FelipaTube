@@ -4,6 +4,42 @@ import { TWITCH_CONFIG } from './config'
 import axios from 'axios'
 // import { TWITCH_CONFIG } from './config'
 
+// Sistema de alias para eventos - maneja variaciones y errores de escritura
+const EVENT_ALIASES = {
+  // Eventos de raid
+  'raid': ['raid', 'raidd', 'raide', 'raids', 'raidear'],
+  'host': ['host', 'hostt', 'hoste', 'hosts', 'hostear'],
+  'gift_sub': ['gift_sub', 'giftsub', 'gift-sub', 'gift', 'regalo'],
+  
+  // Emotes
+  'emote_kappa': ['kappa', 'kappaa', 'kapppa'],
+  'emote_pogchamp': ['pogchamp', 'pog', 'pogchampp'],
+  
+  // Laugh
+  'laugh': ['laugh', 'lol', 'haha', 'jaja', 'lmao', 'rofl'],
+  
+  // Comandos personalizados
+  'feliz': ['feliz', 'happy', 'contento', 'alegre'],
+  'triste': ['triste', 'sad', 'deprimido', 'melancolico'],
+  'sorprendido': ['sorprendido', 'surprised', 'wow', 'omg'],
+  'enojado': ['enojado', 'angry', 'furious', 'mad']
+}
+
+// Función para normalizar eventos
+function normalizeEvent(eventName) {
+  const normalized = eventName.toLowerCase().trim()
+  
+  // Buscar en los alias
+  for (const [canonicalEvent, aliases] of Object.entries(EVENT_ALIASES)) {
+    if (aliases.includes(normalized)) {
+      return canonicalEvent
+    }
+  }
+  
+  // Si no encuentra alias, devolver el original
+  return normalized
+}
+
 class TwitchService {
   constructor() {
     this.client = null
@@ -255,6 +291,15 @@ class TwitchService {
             username: event.user_name
           })
         }
+        
+        // Evento de raid
+        if (subscription.type === 'channel.raid') {
+          this.emit('raid', {
+            channel: this.userInfo.login,
+            raider: event.from_broadcaster_user_name,
+            viewers: event.viewers
+          })
+        }
       }
     })
 
@@ -269,7 +314,8 @@ class TwitchService {
 
   async subscribeToFollowEvents() {
     try {
-      const response = await axios.post(
+      // Suscripción para follow
+      await axios.post(
         'https://api.twitch.tv/helix/eventsub/subscriptions',
         {
           type: 'channel.follow',
@@ -293,6 +339,31 @@ class TwitchService {
       )
 
       console.log('[Twitch] Follow EventSub subscription created')
+
+      // Suscripción para raid
+      await axios.post(
+        'https://api.twitch.tv/helix/eventsub/subscriptions',
+        {
+          type: 'channel.raid',
+          version: '1',
+          condition: {
+            to_broadcaster_user_id: this.userInfo.id
+          },
+          transport: {
+            method: 'websocket',
+            session_id: this.sessionId
+          }
+        },
+        {
+          headers: {
+            'Client-ID': TWITCH_CONFIG.clientId,
+            Authorization: `Bearer ${this.accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      )
+
+      console.log('[Twitch] Raid EventSub subscription created')
     } catch (error) {
       console.error(
         '[Twitch] Failed to create EventSub subscription:',
@@ -316,6 +387,70 @@ class TwitchService {
         isSubscriber: tags.subscriber,
         isMod: tags.mod
       })
+
+      // Eventos personalizados basados en mensajes
+      const lowerMessage = message.toLowerCase()
+      
+      // Detectar risa
+      if (lowerMessage.includes('lol') || lowerMessage.includes('haha') || 
+          lowerMessage.includes('jaja') || lowerMessage.includes('lmao') || 
+          lowerMessage.includes('rofl')) {
+        this.emit('laugh', {
+          channel,
+          username: tags.username,
+          message
+        })
+      }
+
+      // Detectar emotes específicos
+      if (message.includes('Kappa')) {
+        this.emit('emote_kappa', {
+          channel,
+          username: tags.username,
+          emote: 'Kappa'
+        })
+      }
+
+      if (message.includes('PogChamp')) {
+        this.emit('emote_pogchamp', {
+          channel,
+          username: tags.username,
+          emote: 'PogChamp'
+        })
+      }
+
+      // Comandos personalizados
+      if (lowerMessage.includes('!feliz') || lowerMessage.includes('!happy')) {
+        this.emit('feliz', {
+          channel,
+          username: tags.username,
+          message
+        })
+      }
+
+      if (lowerMessage.includes('!triste') || lowerMessage.includes('!sad')) {
+        this.emit('triste', {
+          channel,
+          username: tags.username,
+          message
+        })
+      }
+
+      if (lowerMessage.includes('!sorprendido') || lowerMessage.includes('!surprised')) {
+        this.emit('sorprendido', {
+          channel,
+          username: tags.username,
+          message
+        })
+      }
+
+      if (lowerMessage.includes('!enojado') || lowerMessage.includes('!angry')) {
+        this.emit('enojado', {
+          channel,
+          username: tags.username,
+          message
+        })
+      }
     })
 
     // Suscripciones
@@ -329,6 +464,18 @@ class TwitchService {
       })
     })
 
+    // Gift subscriptions
+    this.client.on('subscription', (channel, username, method, message, userstate) => {
+      if (method === 'subgift') {
+        this.emit('gift_sub', {
+          channel,
+          username,
+          recipient: userstate['msg-param-recipient-display-name'],
+          months: userstate['msg-param-months']
+        })
+      }
+    })
+
     // Bits
     this.client.on('cheer', (channel, userstate, message) => {
       this.emit('bits', {
@@ -338,11 +485,24 @@ class TwitchService {
         message
       })
     })
+
+    // Host
+    this.client.on('hosting', (channel, target, viewers) => {
+      this.emit('host', {
+        channel,
+        target,
+        viewers
+      })
+    })
   }
 
   emit(event, data) {
+    // Normalizar el nombre del evento para manejar alias
+    const normalizedEvent = normalizeEvent(event)
+    console.log(`[Twitch] Emitting event: ${event} -> ${normalizedEvent}`)
+    
     // Enviamos el evento al proceso de renderizado usando el canal específico
-    ipcMain.emit(`twitch:${event}`, data)
+    ipcMain.emit(`twitch:${normalizedEvent}`, data)
   }
 }
 

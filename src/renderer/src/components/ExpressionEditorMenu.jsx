@@ -7,7 +7,7 @@ const twitchTriggers = [
   { value: 'subscription', label: 'New Subscription' },
   { value: 'bits', label: 'Cheered Bits' },
   { value: 'point redemption', label: 'Channel Points Redeem' },
-  { value: 'custom', label: 'Evento Personalizado...' }
+  { value: 'custom', label: 'Próximamente', disabled: true }
 ]
 
 export default function ExpressionEditorMenu({ reaction, onClose, onConfigChange, allReactions }) {
@@ -61,12 +61,7 @@ export default function ExpressionEditorMenu({ reaction, onClose, onConfigChange
     }))
   }
 
-  const handleCustomEventChange = (e) => {
-    setLocalConfig((prev) => ({
-      ...prev,
-      customEvent: e.target.value
-    }))
-  }
+
 
   const handleCommandChange = (e) => {
     setLocalConfig((prev) => ({
@@ -107,7 +102,7 @@ export default function ExpressionEditorMenu({ reaction, onClose, onConfigChange
     onConfigChange(reaction.name, {
       name: localConfig.name,
       command: localConfig.command,
-      event: localConfig.event === 'custom' ? localConfig.customEvent : (localConfig.event === '' ? null : localConfig.event),
+      event: localConfig.event === '' ? null : localConfig.event,
       img: localConfig.img,
       talkingImg: localConfig.talkingImg
     })
@@ -144,7 +139,7 @@ export default function ExpressionEditorMenu({ reaction, onClose, onConfigChange
             <option
               key={t.value}
               value={t.value}
-              disabled={t.value && t.value !== 'custom' && usedEvents.includes(t.value)}
+              disabled={t.disabled || (t.value && t.value !== 'custom' && usedEvents.includes(t.value))}
             >
               {t.label}
               {t.value && t.value !== 'custom' && usedEvents.includes(t.value) ? ' (Usado)' : ''}
@@ -152,21 +147,7 @@ export default function ExpressionEditorMenu({ reaction, onClose, onConfigChange
           ))}
         </select>
 
-        {localConfig.event === 'custom' && (
-          <>
-            <label className="text-sm font-semibold">Evento Personalizado:</label>
-            <input
-              type="text"
-              value={localConfig.customEvent}
-              className="border rounded px-2 py-1 mb-2"
-              onChange={handleCustomEventChange}
-              placeholder="Ej: raid, host, gift_sub..."
-            />
-            <p className="text-xs text-gray-600 mb-2">
-              Nota: Los eventos personalizados necesitan ser implementados en el backend de Twitch.
-            </p>
-          </>
-        )}
+
 
         <label className="text-sm font-semibold">Imágenes:</label>
         <div className="grid grid-cols-2 gap-2">
