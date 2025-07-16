@@ -6,6 +6,7 @@ import MicSelector from './components/MicSelector'
 import TwitchConnection from './components/TwitchConnection'
 import { TwitchEvents } from './components/TwitchEvents'
 import ExpressionEditorMenu from './components/ExpressionEditorMenu'
+import AddExpressionMenu from './components/AddExpressionMenu'
 
 import micIcon from './assets/microphone.png'
 import micMuteIcon from './assets/mute-microphone.png'
@@ -84,6 +85,7 @@ function App() {
   const [selectedMic, setSelectedMic] = useState('default')
   const [bgColor, setBgColor] = useState('#00ff00')
   const [appFocused, setAppFocused] = useState(true)
+  const [showAddExpression, setShowAddExpression] = useState(false)
   const [micEnabled, setMicEnabled] = useState(true)
   const [openMenuReaction, setOpenMenuReaction] = useState(null)
   const [showMenu, setShowMenu] = useState(false)
@@ -272,6 +274,31 @@ function App() {
     })
   }
 
+  // Función para agregar una nueva expresión
+  const addNewExpression = (expressionConfig) => {
+    const newKey = `custom_${Date.now()}` // Generar clave única
+    
+    setStatesData((prev) => ({
+      ...prev,
+      [newKey]: {
+        normal: {
+          name: expressionConfig.name,
+          img: expressionConfig.img
+        },
+        talking: {
+          name: expressionConfig.name,
+          img: expressionConfig.talkingImg
+        },
+        config: {
+          label: expressionConfig.name,
+          command: expressionConfig.command || '',
+          event: expressionConfig.event || '',
+          timeout: expressionConfig.timeout || 5
+        }
+      }
+    }))
+  }
+
   // Al abrir un menú, cerrar el otro
   const handleShowMenu = () => {
     setShowMenu((prev) => {
@@ -346,7 +373,7 @@ function App() {
           <ReactionSelector
             onSelect={(reaction) => {
               const matchedState = Object.entries(statesData).find(
-                ([_, val]) => val.normal.img === reaction.img
+                ([, val]) => val.normal.img === reaction.img
               )
               setTemporaryState(
                 matchedState?.[0] || 'default',
@@ -354,14 +381,20 @@ function App() {
               )
             }}
             reactions={Object.values(statesData).map((s) => s.normal)}
-            openMenuReaction={openMenuReaction}
             setOpenMenuReaction={setOpenMenuReaction}
+            onAdd={() => setShowAddExpression(true)}
           />
         </div>
       )}
       {/* Avatar siempre visible */}
       <div className="flex-1 flex items-center justify-center min-h-screen">
         <Preview reaction={selectedReaction} bgColor={bgColor} isTalking={isSpeaking} />
+        {/* Indicador de foco de la aplicación */}
+        {!appFocused && (
+          <div className="absolute top-4 left-4 bg-yellow-500 text-white px-2 py-1 rounded text-xs">
+            App sin foco
+          </div>
+        )}
       </div>
       {/* Menú editor a la derecha */}
       {openMenuReaction && (
@@ -372,6 +405,21 @@ function App() {
               .find((r) => r.name === openMenuReaction)}
             onClose={() => setOpenMenuReaction(null)}
             onConfigChange={updateReactionConfig}
+            allReactions={Object.values(statesData).map((s) => ({
+              ...s.normal,
+              config: s.config,
+              talkingImg: s.talking.img
+            }))}
+          />
+        </div>
+      )}
+      
+      {/* Menú para agregar nueva expresión */}
+      {showAddExpression && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+          <AddExpressionMenu
+            onClose={() => setShowAddExpression(false)}
+            onAddExpression={addNewExpression}
             allReactions={Object.values(statesData).map((s) => ({
               ...s.normal,
               config: s.config,

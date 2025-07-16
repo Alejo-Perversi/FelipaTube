@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types'
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 
 const twitchTriggers = [
   { value: '', label: 'Ninguna' },
@@ -10,43 +10,23 @@ const twitchTriggers = [
   { value: 'custom', label: 'Evento Personalizado...' }
 ]
 
-export default function ExpressionEditorMenu({ reaction, onClose, onConfigChange, allReactions }) {
+export default function AddExpressionMenu({ onClose, onAddExpression, allReactions }) {
   const [localConfig, setLocalConfig] = useState({
     name: '',
     command: '',
     event: '',
     customEvent: '',
     img: '',
-    talkingImg: ''
+    talkingImg: '',
+    timeout: 5
   })
 
-  const lastReactionName = useRef(null)
-
-  useEffect(() => {
-    if (reaction && reaction.name !== lastReactionName.current) {
-      const isCustomEvent = reaction.config?.event && !['follow', 'subscription', 'bits', 'point redemption'].includes(reaction.config.event)
-      setLocalConfig({
-        name: reaction.name || '',
-        command: reaction.config?.command || '',
-        event: isCustomEvent ? 'custom' : (reaction.config?.event || ''),
-        customEvent: isCustomEvent ? reaction.config?.event : '',
-        img: reaction.img || '',
-        talkingImg: reaction.talkingImg || ''
-      })
-      lastReactionName.current = reaction.name
-    }
-  }, [reaction])
-
-  if (!reaction) return null
-
-  // Get all used events except for this reaction
+  // Get all used events
   const usedEvents = (allReactions || [])
-    .filter((r) => r.name !== reaction.name)
     .map((r) => r.config?.event)
     .filter(Boolean)
 
   const handleNameChange = (e) => {
-    // New function to handle name input changes
     setLocalConfig((prev) => ({
       ...prev,
       name: e.target.value
@@ -72,6 +52,13 @@ export default function ExpressionEditorMenu({ reaction, onClose, onConfigChange
     setLocalConfig((prev) => ({
       ...prev,
       command: e.target.value
+    }))
+  }
+
+  const handleTimeoutChange = (e) => {
+    setLocalConfig((prev) => ({
+      ...prev,
+      timeout: parseInt(e.target.value) || 5
     }))
   }
 
@@ -104,12 +91,53 @@ export default function ExpressionEditorMenu({ reaction, onClose, onConfigChange
   }
 
   const handleSave = () => {
-    onConfigChange(reaction.name, {
-      name: localConfig.name,
-      command: localConfig.command,
+    // Validar que tenga nombre e imágenes
+    if (!localConfig.name.trim()) {
+      alert('Por favor ingresa un nombre para la expresión')
+      return
+    }
+    
+    if (!localConfig.img) {
+      alert('Por favor selecciona una imagen para el estado normal')
+      return
+    }
+    
+    if (!localConfig.talkingImg) {
+      alert('Por favor selecciona una imagen para el estado hablando')
+      return
+    }
+
+    // Validar que el nombre no esté duplicado
+    const existingNames = allReactions.map(r => r.name)
+    if (existingNames.includes(localConfig.name)) {
+      alert('Ya existe una expresión con ese nombre')
+      return
+    }
+
+    // Validar que el comando no esté duplicado
+    if (localConfig.command) {
+      const existingCommands = allReactions.map(r => r.config?.command).filter(Boolean)
+      if (existingCommands.includes(localConfig.command)) {
+        alert('Ya existe una expresión con ese comando')
+        return
+      }
+    }
+
+    // Validar que el evento no esté duplicado
+    if (localConfig.event && localConfig.event !== 'custom') {
+      if (usedEvents.includes(localConfig.event)) {
+        alert('Ya existe una expresión con ese evento de Twitch')
+        return
+      }
+    }
+
+    onAddExpression({
+      name: localConfig.name.trim(),
+      command: localConfig.command.trim(),
       event: localConfig.event === 'custom' ? localConfig.customEvent : (localConfig.event === '' ? null : localConfig.event),
       img: localConfig.img,
-      talkingImg: localConfig.talkingImg
+      talkingImg: localConfig.talkingImg,
+      timeout: localConfig.timeout
     })
     onClose()
   }
@@ -117,13 +145,15 @@ export default function ExpressionEditorMenu({ reaction, onClose, onConfigChange
   return (
     <div className="absolute top-12 left-1/2 -translate-x-1/2 bg-gray-100 border rounded shadow-lg z-20 p-4 w-[340px]">
       <div className="flex flex-col gap-2">
-        <h3 className="font-bold text-lg mb-2">Editor Expresión</h3>
-        <label className="text-sm font-semibold">Nombre:</label>
+        <h3 className="font-bold text-lg mb-2">Agregar Nueva Expresión</h3>
+        
+        <label className="text-sm font-semibold">Nombre: *</label>
         <input
           type="text"
-          value={localConfig.name} // Use local state for the value
+          value={localConfig.name}
           className="border rounded px-2 py-1 mb-2"
-          onChange={handleNameChange} // Allow editing
+          onChange={handleNameChange}
+          placeholder="Ej: Feliz, Triste, Sorprendido..."
         />
 
         <label className="text-sm font-semibold">Comando:</label>
@@ -132,6 +162,7 @@ export default function ExpressionEditorMenu({ reaction, onClose, onConfigChange
           value={localConfig.command}
           className="border rounded px-2 py-1 mb-2"
           onChange={handleCommandChange}
+          placeholder="Ej: !feliz, !triste..."
         />
 
         <label className="text-sm font-semibold">Twitch Trigger:</label>
@@ -168,14 +199,30 @@ export default function ExpressionEditorMenu({ reaction, onClose, onConfigChange
           </>
         )}
 
-        <label className="text-sm font-semibold">Imágenes:</label>
+        <label className="text-sm font-semibold">Duración (segundos):</label>
+        <input
+          type="number"
+          min="1"
+          max="60"
+          value={localConfig.timeout}
+          className="border rounded px-2 py-1 mb-2"
+          onChange={handleTimeoutChange}
+        />
+
+        <label className="text-sm font-semibold">Imágenes: *</label>
         <div className="grid grid-cols-2 gap-2">
           <div className="flex flex-col items-center border p-1">
-            <span className="text-s mb-1">Silencio</span>
-            <img src={localConfig.img} alt="cerrada" width={80} height={80} />
+            <span className="text-s mb-1">Silencio *</span>
+            {localConfig.img ? (
+              <img src={localConfig.img} alt="cerrada" width={80} height={80} />
+            ) : (
+              <div className="w-20 h-20 bg-gray-200 border-2 border-dashed border-gray-400 flex items-center justify-center">
+                <span className="text-gray-400 text-xs text-center">Sin imagen</span>
+              </div>
+            )}
             <label className="mt-2 w-full flex justify-center">
-              <span className="bg-gray-500 text-white px-2 py-1 rounded cursor-pointer text-xs">
-                Cambiar imagen
+              <span className="bg-blue-500 text-white px-2 py-1 rounded cursor-pointer text-xs hover:bg-blue-600">
+                Seleccionar imagen
               </span>
               <input
                 type="file"
@@ -186,11 +233,17 @@ export default function ExpressionEditorMenu({ reaction, onClose, onConfigChange
             </label>
           </div>
           <div className="flex flex-col items-center border p-1">
-            <span className="text-s mb-1">Hablando</span>
-            <img src={localConfig.talkingImg} alt="abierta" width={80} height={80} />
+            <span className="text-s mb-1">Hablando *</span>
+            {localConfig.talkingImg ? (
+              <img src={localConfig.talkingImg} alt="abierta" width={80} height={80} />
+            ) : (
+              <div className="w-20 h-20 bg-gray-200 border-2 border-dashed border-gray-400 flex items-center justify-center">
+                <span className="text-gray-400 text-xs text-center">Sin imagen</span>
+              </div>
+            )}
             <label className="mt-2 w-full flex justify-center">
-              <span className="bg-gray-500 text-white px-2 py-1 rounded cursor-pointer text-xs">
-                Cambiar Imagen
+              <span className="bg-blue-500 text-white px-2 py-1 rounded cursor-pointer text-xs hover:bg-blue-600">
+                Seleccionar imagen
               </span>
               <input
                 type="file"
@@ -204,16 +257,16 @@ export default function ExpressionEditorMenu({ reaction, onClose, onConfigChange
 
         <div className="flex gap-2 mt-4">
           <button
-            className="py-2 px-4 rounded bg-green-600 text-white font-bold flex-1"
+            className="py-2 px-4 rounded bg-green-600 text-white font-bold flex-1 hover:bg-green-700"
             onClick={handleSave}
           >
-            Guardar
+            Crear Expresión
           </button>
           <button
-            className="py-2 px-4 rounded bg-red-500 text-white font-bold flex-1"
+            className="py-2 px-4 rounded bg-red-500 text-white font-bold flex-1 hover:bg-red-600"
             onClick={onClose}
           >
-            Cerrar
+            Cancelar
           </button>
         </div>
       </div>
@@ -221,9 +274,8 @@ export default function ExpressionEditorMenu({ reaction, onClose, onConfigChange
   )
 }
 
-ExpressionEditorMenu.propTypes = {
-  reaction: PropTypes.object,
+AddExpressionMenu.propTypes = {
   onClose: PropTypes.func.isRequired,
-  onConfigChange: PropTypes.func.isRequired,
+  onAddExpression: PropTypes.func.isRequired,
   allReactions: PropTypes.array
 }
