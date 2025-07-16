@@ -10,7 +10,13 @@ const twitchTriggers = [
   { value: 'custom', label: 'Próximamente', disabled: true }
 ]
 
-export default function ExpressionEditorMenu({ reaction, onClose, onConfigChange, allReactions }) {
+export default function ExpressionEditorMenu({
+  reaction,
+  onClose,
+  onConfigChange,
+  onDelete,
+  allReactions
+}) {
   const [localConfig, setLocalConfig] = useState({
     name: '',
     command: '',
@@ -24,11 +30,13 @@ export default function ExpressionEditorMenu({ reaction, onClose, onConfigChange
 
   useEffect(() => {
     if (reaction && reaction.name !== lastReactionName.current) {
-      const isCustomEvent = reaction.config?.event && !['follow', 'subscription', 'bits', 'point redemption'].includes(reaction.config.event)
+      const isCustomEvent =
+        reaction.config?.event &&
+        !['follow', 'subscription', 'bits', 'point redemption'].includes(reaction.config.event)
       setLocalConfig({
         name: reaction.name || '',
         command: reaction.config?.command || '',
-        event: isCustomEvent ? 'custom' : (reaction.config?.event || ''),
+        event: isCustomEvent ? 'custom' : reaction.config?.event || '',
         customEvent: isCustomEvent ? reaction.config?.event : '',
         img: reaction.img || '',
         talkingImg: reaction.talkingImg || ''
@@ -60,8 +68,6 @@ export default function ExpressionEditorMenu({ reaction, onClose, onConfigChange
       customEvent: e.target.value === 'custom' ? prev.customEvent : ''
     }))
   }
-
-
 
   const handleCommandChange = (e) => {
     setLocalConfig((prev) => ({
@@ -139,15 +145,15 @@ export default function ExpressionEditorMenu({ reaction, onClose, onConfigChange
             <option
               key={t.value}
               value={t.value}
-              disabled={t.disabled || (t.value && t.value !== 'custom' && usedEvents.includes(t.value))}
+              disabled={
+                t.disabled || (t.value && t.value !== 'custom' && usedEvents.includes(t.value))
+              }
             >
               {t.label}
               {t.value && t.value !== 'custom' && usedEvents.includes(t.value) ? ' (Usado)' : ''}
             </option>
           ))}
         </select>
-
-
 
         <label className="text-sm font-semibold">Imágenes:</label>
         <div className="grid grid-cols-2 gap-2">
@@ -197,6 +203,29 @@ export default function ExpressionEditorMenu({ reaction, onClose, onConfigChange
             Cerrar
           </button>
         </div>
+
+        {/* Botón de eliminar solo para expresiones personalizadas */}
+        {reaction &&
+          reaction.name &&
+          !['Default', 'Follower', 'Subscription', 'Bits', 'Payaso'].includes(reaction.name) && (
+            <div className="mt-4 pt-4 border-t border-gray-300">
+              <button
+                className="w-full py-2 px-4 rounded bg-red-700 text-white font-bold hover:bg-red-800 transition-colors"
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      `¿Estás seguro de que quieres eliminar la expresión "${reaction.name}"?`
+                    )
+                  ) {
+                    onDelete(reaction.name)
+                    onClose()
+                  }
+                }}
+              >
+                🗑️ Eliminar Expresión
+              </button>
+            </div>
+          )}
       </div>
     </div>
   )
@@ -206,5 +235,6 @@ ExpressionEditorMenu.propTypes = {
   reaction: PropTypes.object,
   onClose: PropTypes.func.isRequired,
   onConfigChange: PropTypes.func.isRequired,
+  onDelete: PropTypes.func,
   allReactions: PropTypes.array
 }

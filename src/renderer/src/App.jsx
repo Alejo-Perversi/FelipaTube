@@ -277,7 +277,7 @@ function App() {
   // Función para agregar una nueva expresión
   const addNewExpression = (expressionConfig) => {
     const newKey = `custom_${Date.now()}` // Generar clave única
-    
+
     setStatesData((prev) => ({
       ...prev,
       [newKey]: {
@@ -297,6 +297,18 @@ function App() {
         }
       }
     }))
+  }
+
+  // Función para eliminar una expresión
+  const deleteExpression = (expressionName) => {
+    setStatesData((prev) => {
+      const key = Object.keys(prev).find((k) => prev[k].normal.name === expressionName)
+      if (!key) return prev
+
+      const newStatesData = { ...prev }
+      delete newStatesData[key]
+      return newStatesData
+    })
   }
 
   // Al abrir un menú, cerrar el otro
@@ -323,7 +335,13 @@ function App() {
           onClick={handleShowMenu}
           title="Abrir configuración"
         >
-          <img src={gearIcon} alt="Configuración" width={28} height={28} style={{ display: 'block' }} />
+          <img
+            src={gearIcon}
+            alt="Configuración"
+            width={28}
+            height={28}
+            style={{ display: 'block' }}
+          />
         </button>
         <button
           className="bg-white rounded-full p-2 shadow hover:bg-gray-200 border border-gray-300 transition flex items-center justify-center"
@@ -336,7 +354,10 @@ function App() {
       </div>
       <TwitchEvents onEvent={handleTwitchEvent.current} />
       {/* TwitchConnection siempre montado, solo visible si showTwitch */}
-      <div style={{ display: showTwitch ? 'block' : 'none' }} className="fixed left-0 top-0 h-full w-[320px] bg-gray-300 p-2 z-40">
+      <div
+        style={{ display: showTwitch ? 'block' : 'none' }}
+        className="fixed left-0 top-0 h-full w-[320px] bg-gray-300 p-2 z-40"
+      >
         <TwitchConnection onEvent={handleTwitchEvent.current} />
       </div>
       {/* Menú lateral de configuración */}
@@ -405,6 +426,7 @@ function App() {
               .find((r) => r.name === openMenuReaction)}
             onClose={() => setOpenMenuReaction(null)}
             onConfigChange={updateReactionConfig}
+            onDelete={deleteExpression}
             allReactions={Object.values(statesData).map((s) => ({
               ...s.normal,
               config: s.config,
@@ -413,7 +435,7 @@ function App() {
           />
         </div>
       )}
-      
+
       {/* Menú para agregar nueva expresión */}
       {showAddExpression && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
