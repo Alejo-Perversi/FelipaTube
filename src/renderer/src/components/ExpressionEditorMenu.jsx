@@ -1,15 +1,21 @@
 import PropTypes from 'prop-types'
-import React, { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 const twitchTriggers = [
   { value: '', label: 'Ninguna' },
   { value: 'follow', label: 'New Follow' },
   { value: 'subscription', label: 'New Subscription' },
   { value: 'bits', label: 'Cheered Bits' },
-  { value: 'point redemption', label: 'Channel Points Redeem' }
+  { value: 'point redemption', label: 'Channel Points Redeem' },
+  { value: 'custom', label: 'Próximamente', disabled: true }
 ]
 
-export default function ExpressionEditorMenu({ reaction, onClose, onConfigChange, allReactions }) {
+export default function ExpressionEditorMenu({
+  reaction,
+  onClose,
+  onConfigChange,
+  allReactions
+}) {
   const [localConfig, setLocalConfig] = useState({
     name: '',
     command: '',
@@ -103,7 +109,7 @@ export default function ExpressionEditorMenu({ reaction, onClose, onConfigChange
   }
 
   return (
-    <div className="absolute top-12 left-1/2 -translate-x-1/2 bg-gray-100 border rounded shadow-lg z-20 p-4 w-[340px]">
+    <div className="absolute top-12 left-1/2 -translate-x-1/2 bg-gray-100 border rounded shadow-lg z-20 p-4 w-[320px] max-w-[90vw]">
       <div className="flex flex-col gap-2">
         <h3 className="font-bold text-lg mb-2">Editor Expresión</h3>
         <label className="text-sm font-semibold">Nombre:</label>
@@ -122,7 +128,7 @@ export default function ExpressionEditorMenu({ reaction, onClose, onConfigChange
           onChange={handleCommandChange}
         />
 
-        <label className="text-sm font-semibold">Twitch Trigger:</label>
+        <label className="text-sm font-semibold">Evento Twitch:</label>
         <select
           className="border rounded px-2 py-1 mb-2"
           value={localConfig.event || ''}
@@ -132,10 +138,12 @@ export default function ExpressionEditorMenu({ reaction, onClose, onConfigChange
             <option
               key={t.value}
               value={t.value}
-              disabled={t.value && usedEvents.includes(t.value)}
+              disabled={
+                t.disabled || (t.value && t.value !== 'custom' && usedEvents.includes(t.value))
+              }
             >
               {t.label}
-              {t.value && usedEvents.includes(t.value) ? ' (Usado)' : ''}
+              {t.value && t.value !== 'custom' && usedEvents.includes(t.value) ? ' (Usado)' : ''}
             </option>
           ))}
         </select>
@@ -144,7 +152,7 @@ export default function ExpressionEditorMenu({ reaction, onClose, onConfigChange
         <div className="grid grid-cols-2 gap-2">
           <div className="flex flex-col items-center border p-1">
             <span className="text-s mb-1">Silencio</span>
-            <img src={localConfig.img} alt="cerrada" width={80} height={80} />
+            <img src={localConfig.img || null} alt="cerrada" width={80} height={80} />
             <label className="mt-2 w-full flex justify-center">
               <span className="bg-gray-500 text-white px-2 py-1 rounded cursor-pointer text-xs">
                 Cambiar imagen
@@ -159,7 +167,7 @@ export default function ExpressionEditorMenu({ reaction, onClose, onConfigChange
           </div>
           <div className="flex flex-col items-center border p-1">
             <span className="text-s mb-1">Hablando</span>
-            <img src={localConfig.talkingImg} alt="abierta" width={80} height={80} />
+            <img src={localConfig.talkingImg || null} alt="abierta" width={80} height={80} />
             <label className="mt-2 w-full flex justify-center">
               <span className="bg-gray-500 text-white px-2 py-1 rounded cursor-pointer text-xs">
                 Cambiar Imagen

@@ -6,9 +6,12 @@ import MicSelector from './components/MicSelector'
 import TwitchConnection from './components/TwitchConnection'
 import { TwitchEvents } from './components/TwitchEvents'
 import ExpressionEditorMenu from './components/ExpressionEditorMenu'
+import AddExpressionMenu from './components/AddExpressionMenu'
 
 import micIcon from './assets/microphone.png'
 import micMuteIcon from './assets/mute-microphone.png'
+import gearIcon from './assets/gear.png'
+import twitchIcon from './assets/twitch.png'
 
 import Default_Closed_Mouth from './assets/Default_Closed_Mouth.png'
 import Default_Open_Mouth from './assets/Default_Open_Mouth.png'
@@ -82,8 +85,11 @@ function App() {
   const [selectedMic, setSelectedMic] = useState('default')
   const [bgColor, setBgColor] = useState('#00ff00')
   const [appFocused, setAppFocused] = useState(true)
+  const [showAddExpression, setShowAddExpression] = useState(false)
   const [micEnabled, setMicEnabled] = useState(true)
   const [openMenuReaction, setOpenMenuReaction] = useState(null)
+  const [showMenu, setShowMenu] = useState(false)
+  const [showTwitch, setShowTwitch] = useState(false)
 
   // Usamos useRef para mantener una referencia mutable a la última versión de statesData
   const statesDataRef = useRef(null)
@@ -113,12 +119,18 @@ function App() {
 
   // Cambia a estado y vuelve a default
   const setTemporaryState = (newState, customTimeout = null) => {
+    // Verificar que el estado existe antes de cambiarlo
+    const currentStates = statesDataRef.current
+    if (!currentStates[newState]) {
+      console.warn(`Estado '${newState}' no existe, volviendo a default`)
+      setCurrentState('default')
+      return
+    }
+
     setCurrentState(newState)
 
     if (resetTimeoutRef.current) clearTimeout(resetTimeoutRef.current)
 
-    // Accede a statesData a través del ref para obtener la última versión
-    const currentStates = statesDataRef.current
     const timeout =
       customTimeout !== null ? customTimeout : currentStates[newState]?.config?.timeout
 
@@ -185,6 +197,13 @@ function App() {
 
   // Efecto de micrófono hablando/no hablando.
   useEffect(() => {
+    // Verificar que el currentState existe en statesData
+    if (!statesData[currentState]) {
+      console.warn(`Estado actual '${currentState}' no existe, volviendo a default`)
+      setCurrentState('default')
+      return
+    }
+
     setSelectedReaction(
       isSpeaking
         ? { name: 'talking', img: statesData[currentState].talking.img }
@@ -202,9 +221,9 @@ function App() {
     const currentStates = statesDataRef.current
     let matchedStateKey = null
 
-    // Buscar la reacción cuyo config.event coincida con el eventType
+    // Buscar la reacción cuyo config.event coincida con el eventType (solo si el evento no está vacío)
     matchedStateKey = Object.entries(currentStates).find(
-      ([, val]) => val.config.event === eventType
+      ([, val]) => val.config.event && val.config.event !== '' && val.config.event === eventType
     )?.[0]
 
     if (matchedStateKey) {
@@ -217,10 +236,11 @@ function App() {
     // ChatMessage: comandos por texto
     if (eventType === 'chatMessage') {
       const message = data.message.toLowerCase()
-      // Buscar por comando en config.command
-      matchedStateKey = Object.entries(currentStates).find(([, val]) =>
-        message.includes(val.config.command?.toLowerCase())
-      )?.[0]
+      // Buscar por comando en config.command (solo si el comando no está vacío)
+      matchedStateKey = Object.entries(currentStates).find(([, val]) => {
+        const command = val.config.command?.toLowerCase().trim()
+        return command && command !== '' && message.includes(command)
+      })?.[0]
       if (matchedStateKey) {
         const timeout = currentStates[matchedStateKey].config.timeout
         // Llama a setTemporaryState, que también usa el ref
@@ -242,7 +262,10 @@ function App() {
   const updateReactionConfig = (reactionName, newConfig) => {
     setStatesData((prev) => {
       const key = Object.keys(prev).find((k) => prev[k].normal.name === reactionName)
-      if (!key) return prev
+      if (!key) {
+        console.warn(`No se encontró la expresión: ${reactionName}`)
+        return prev
+      }
 
       const updatedNormal = {
         ...prev[key].normal,
@@ -256,7 +279,7 @@ function App() {
         img: newConfig.talkingImg !== undefined ? newConfig.talkingImg : prev[key].talking.img
       }
 
-      return {
+      const updatedStates = {
         ...prev,
         [key]: {
           ...prev[key],
@@ -265,74 +288,189 @@ function App() {
           config: { ...prev[key].config, ...newConfig }
         }
       }
+
+      console.log(`Expresión actualizada: ${reactionName} -> ${newConfig.name || reactionName}`)
+      return updatedStates
+    })
+
+    // Actualizar el estado del menú abierto si se cambió el nombre
+    if (newConfig.name && newConfig.name !== reactionName && openMenuReaction === reactionName) {
+      setOpenMenuReaction(newConfig.name)
+    }
+  }
+
+  // Función para agregar una nueva expresión
+  const addNewExpression = (expressionConfig) => {
+    const newKey = `custom_${Date.now()}` // Generar clave única
+
+    setStatesData((prev) => ({
+      ...prev,
+      [newKey]: {
+        normal: {
+          name: expressionConfig.name,
+          img: expressionConfig.img
+        },
+        talking: {
+          name: expressionConfig.name,
+          img: expressionConfig.talkingImg
+        },
+        config: {
+          label: expressionConfig.name,
+          command: expressionConfig.command || '',
+          event: expressionConfig.event || '',
+          timeout: expressionConfig.timeout || 5
+        }
+      }
+    }))
+  }
+
+  // Al abrir un menú, cerrar el otro
+  const handleShowMenu = () => {
+    setShowMenu((prev) => {
+      if (!prev) setShowTwitch(false)
+      return !prev
+    })
+  }
+  const handleShowTwitch = () => {
+    setShowTwitch((prev) => {
+      if (!prev) setShowMenu(false)
+      return !prev
     })
   }
 
+  // Función para cerrar el menú de edición de manera segura
+  const handleCloseExpressionMenu = () => {
+    setOpenMenuReaction(null)
+  }
+
   return (
-    <div className="flex h-screen w-screen">
-      {/* Pasamos handleTwitchEvent.current a onEvent */}
-      <TwitchEvents onEvent={handleTwitchEvent.current} />
-      <div className="flex flex-col w-[320px] bg-gray-300 p-2">
-        {/* Pasamos handleTwitchEvent.current a onEvent */}
-        <TwitchConnection onEvent={handleTwitchEvent.current} />
-
-        {/* Config Micrófono */}
-        <label className="text-sm font-semibold mt-2">Micrófono:</label>
-        <div className="flex items-center gap-2 mb-2">
-          <button
-            className={`p-2 rounded-full border-2 ${micEnabled ? 'border-green-500' : 'border-gray-400'} bg-white hover:bg-gray-200 transition flex items-center justify-center`}
-            onClick={() => setMicEnabled((v) => !v)}
-            title={micEnabled ? 'Desactivar micrófono' : 'Activar micrófono'}
-            style={{ width: 40, height: 40, minWidth: 40, minHeight: 40 }}
-          >
-            <img
-              src={micEnabled ? micIcon : micMuteIcon}
-              alt={micEnabled ? 'Micrófono activado' : 'Micrófono desactivado'}
-              width={24}
-              height={24}
-              style={{ objectFit: 'contain', display: 'block' }}
-            />
-          </button>
-          <div className="flex-1">
-            <MicSelector selected={selectedMic} onSelect={setSelectedMic} />
-          </div>
-        </div>
-        <label className="text-sm font-semibold mt-2">Color de fondo:</label>
-        <input
-          type="color"
-          value={bgColor}
-          onChange={(e) => setBgColor(e.target.value)}
-          className="w-full rounded"
-          style={{ height: '2rem', minHeight: '2rem', maxHeight: '2rem' }}
-        />
-
-        <ReactionSelector
-          onSelect={(reaction) => {
-            const matchedState = Object.entries(statesData).find(
-              ([_, val]) => val.normal.img === reaction.img
-            )
-            // Cuando se selecciona manualmente, usamos el timeout de la configuración actual
-            // statesData aquí está bien porque esta función se recrea en cada render
-            setTemporaryState(
-              matchedState?.[0] || 'default',
-              statesData[matchedState?.[0] || 'default']?.config?.timeout
-            )
-          }}
-          reactions={Object.values(statesData).map((s) => s.normal)}
-          openMenuReaction={openMenuReaction}
-          setOpenMenuReaction={setOpenMenuReaction}
-        />
+    <div className="flex h-screen w-screen relative">
+      {/* Iconos flotantes */}
+      <div className="absolute top-4 right-4 z-40 flex flex-col gap-2">
+        <button
+          className="bg-white rounded-full p-2 shadow hover:bg-gray-200 border border-gray-300 transition flex items-center justify-center"
+          style={{ width: 48, height: 48 }}
+          onClick={handleShowMenu}
+          title="Abrir configuración"
+        >
+          <img
+            src={gearIcon}
+            alt="Configuración"
+            width={28}
+            height={28}
+            style={{ display: 'block' }}
+          />
+        </button>
+        <button
+          className="bg-white rounded-full p-2 shadow hover:bg-gray-200 border border-gray-300 transition flex items-center justify-center"
+          style={{ width: 48, height: 48 }}
+          onClick={handleShowTwitch}
+          title="Conectar Twitch"
+        >
+          <img src={twitchIcon} alt="Twitch" width={28} height={28} style={{ display: 'block' }} />
+        </button>
       </div>
-      <Preview reaction={selectedReaction} bgColor={bgColor} isTalking={isSpeaking} />
+      <TwitchEvents onEvent={handleTwitchEvent.current} />
+      {/* TwitchConnection siempre montado, solo visible si showTwitch */}
+      <div
+        style={{ display: showTwitch ? 'block' : 'none' }}
+        className="fixed left-0 top-0 h-full w-[320px] bg-gray-300 p-2 z-40"
+      >
+        <TwitchConnection onEvent={handleTwitchEvent.current} />
+      </div>
+      {/* Menú lateral de configuración */}
+      {showMenu && (
+        <div className="flex flex-col w-[320px] bg-gray-300 p-2 h-full z-30">
+          <label className="text-sm font-semibold mt-2">Micrófono:</label>
+          <div className="flex items-center gap-2 mb-2">
+            <button
+              className={`p-2 rounded-full border-2 ${micEnabled ? 'border-green-500' : 'border-gray-400'} bg-white hover:bg-gray-200 transition flex items-center justify-center`}
+              onClick={() => setMicEnabled((v) => !v)}
+              title={micEnabled ? 'Desactivar micrófono' : 'Activar micrófono'}
+              style={{ width: 40, height: 40, minWidth: 40, minHeight: 40 }}
+            >
+              <img
+                src={micEnabled ? micIcon : micMuteIcon}
+                alt={micEnabled ? 'Micrófono activado' : 'Micrófono desactivado'}
+                width={24}
+                height={24}
+                style={{ objectFit: 'contain', display: 'block' }}
+              />
+            </button>
+            <div className="flex-1">
+              <MicSelector selected={selectedMic} onSelect={setSelectedMic} />
+            </div>
+          </div>
+          <label className="text-sm font-semibold mt-2">Color de fondo:</label>
+          <input
+            type="color"
+            value={bgColor}
+            onChange={(e) => setBgColor(e.target.value)}
+            className="w-full rounded"
+            style={{ height: '2rem', minHeight: '2rem', maxHeight: '2rem' }}
+          />
+          <ReactionSelector
+            onSelect={(reaction) => {
+              const matchedState = Object.entries(statesData).find(
+                ([, val]) => val.normal.img === reaction.img
+              )
+              setTemporaryState(
+                matchedState?.[0] || 'default',
+                statesData[matchedState?.[0] || 'default']?.config?.timeout
+              )
+            }}
+            reactions={Object.entries(statesData).map(([key, s]) => ({ ...s.normal, key }))}
+            setOpenMenuReaction={setOpenMenuReaction}
+            onAdd={() => setShowAddExpression(true)}
+          />
+        </div>
+      )}
+      {/* Avatar siempre visible */}
+      <div className="flex-1 flex items-center justify-center min-h-screen">
+        <Preview reaction={selectedReaction} bgColor={bgColor} isTalking={isSpeaking} />
+        {/* Indicador de foco de la aplicación */}
+        {!appFocused && (
+          <div className="absolute top-4 left-4 bg-yellow-500 text-white px-2 py-1 rounded text-xs">
+            App sin foco
+          </div>
+        )}
+      </div>
       {/* Menú editor a la derecha */}
-      {openMenuReaction && (
-        <div className="fixed right-0 top-0 h-full w-[350px] bg-gray-300 border-l shadow-lg z-30 flex flex-col p-4">
-          <ExpressionEditorMenu
-            reaction={Object.values(statesData)
-              .map((s) => ({ ...s.normal, config: s.config, talkingImg: s.talking.img }))
-              .find((r) => r.name === openMenuReaction)}
-            onClose={() => setOpenMenuReaction(null)}
-            onConfigChange={updateReactionConfig}
+      {openMenuReaction &&
+        (() => {
+          const reaction = Object.entries(statesData)
+            .map(([key, s]) => ({ ...s.normal, config: s.config, talkingImg: s.talking.img, key }))
+            .find((r) => r.name === openMenuReaction)
+
+          // Si no se encuentra la reacción, cerrar el menú
+          if (!reaction) {
+            console.warn(`No se encontró la reacción: ${openMenuReaction}`)
+            setOpenMenuReaction(null)
+            return null
+          }
+
+          return (
+            <div className="fixed right-0 top-0 h-full w-[350px] bg-gray-300 border-l shadow-lg z-50 flex flex-col p-4">
+              <ExpressionEditorMenu
+                reaction={reaction}
+                onClose={handleCloseExpressionMenu}
+                onConfigChange={updateReactionConfig}
+                allReactions={Object.values(statesData).map((s) => ({
+                  ...s.normal,
+                  config: s.config,
+                  talkingImg: s.talking.img
+                }))}
+              />
+            </div>
+          )
+        })()}
+
+      {/* Menú para agregar nueva expresión */}
+      {showAddExpression && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+          <AddExpressionMenu
+            onClose={() => setShowAddExpression(false)}
+            onAddExpression={addNewExpression}
             allReactions={Object.values(statesData).map((s) => ({
               ...s.normal,
               config: s.config,
