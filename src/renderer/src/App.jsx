@@ -292,7 +292,7 @@ function App() {
       console.log(`Expresión actualizada: ${reactionName} -> ${newConfig.name || reactionName}`)
       return updatedStates
     })
-    
+
     // Actualizar el estado del menú abierto si se cambió el nombre
     if (newConfig.name && newConfig.name !== reactionName && openMenuReaction === reactionName) {
       setOpenMenuReaction(newConfig.name)
@@ -322,34 +322,6 @@ function App() {
         }
       }
     }))
-  }
-
-  // Función para eliminar una expresión
-  const deleteExpression = (expressionName) => {
-    setStatesData((prev) => {
-      const key = Object.keys(prev).find((k) => prev[k].normal.name === expressionName)
-      if (!key) {
-        console.warn(`No se encontró la expresión para eliminar: ${expressionName}`)
-        return prev
-      }
-
-      const newStatesData = { ...prev }
-      delete newStatesData[key]
-      console.log(`Expresión eliminada: ${expressionName}`)
-      return newStatesData
-    })
-    
-    // Limpiar el estado del menú abierto si se eliminó la expresión que estaba siendo editada
-    if (openMenuReaction === expressionName) {
-      setOpenMenuReaction(null)
-    }
-    
-    // Si se eliminó el estado actual, volver a default
-    const currentStates = statesDataRef.current
-    if (currentStates && !currentStates[currentState]) {
-      console.warn(`Estado actual '${currentState}' fue eliminado, volviendo a default`)
-      setCurrentState('default')
-    }
   }
 
   // Al abrir un menú, cerrar el otro
@@ -464,34 +436,34 @@ function App() {
         )}
       </div>
       {/* Menú editor a la derecha */}
-      {openMenuReaction && (() => {
-        const reaction = Object.entries(statesData)
-          .map(([key, s]) => ({ ...s.normal, config: s.config, talkingImg: s.talking.img, key }))
-          .find((r) => r.name === openMenuReaction)
-        
-        // Si no se encuentra la reacción, cerrar el menú
-        if (!reaction) {
-          console.warn(`No se encontró la reacción: ${openMenuReaction}`)
-          setOpenMenuReaction(null)
-          return null
-        }
-        
-        return (
-          <div className="fixed right-0 top-0 h-full w-[350px] bg-gray-300 border-l shadow-lg z-50 flex flex-col p-4">
-            <ExpressionEditorMenu
-              reaction={reaction}
-              onClose={handleCloseExpressionMenu}
-              onConfigChange={updateReactionConfig}
-              onDelete={deleteExpression}
-              allReactions={Object.values(statesData).map((s) => ({
-                ...s.normal,
-                config: s.config,
-                talkingImg: s.talking.img
-              }))}
-            />
-          </div>
-        )
-      })()}
+      {openMenuReaction &&
+        (() => {
+          const reaction = Object.entries(statesData)
+            .map(([key, s]) => ({ ...s.normal, config: s.config, talkingImg: s.talking.img, key }))
+            .find((r) => r.name === openMenuReaction)
+
+          // Si no se encuentra la reacción, cerrar el menú
+          if (!reaction) {
+            console.warn(`No se encontró la reacción: ${openMenuReaction}`)
+            setOpenMenuReaction(null)
+            return null
+          }
+
+          return (
+            <div className="fixed right-0 top-0 h-full w-[350px] bg-gray-300 border-l shadow-lg z-50 flex flex-col p-4">
+              <ExpressionEditorMenu
+                reaction={reaction}
+                onClose={handleCloseExpressionMenu}
+                onConfigChange={updateReactionConfig}
+                allReactions={Object.values(statesData).map((s) => ({
+                  ...s.normal,
+                  config: s.config,
+                  talkingImg: s.talking.img
+                }))}
+              />
+            </div>
+          )
+        })()}
 
       {/* Menú para agregar nueva expresión */}
       {showAddExpression && (

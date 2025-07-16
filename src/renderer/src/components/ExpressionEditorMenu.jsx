@@ -14,7 +14,6 @@ export default function ExpressionEditorMenu({
   reaction,
   onClose,
   onConfigChange,
-  onDelete,
   allReactions
 }) {
   const [localConfig, setLocalConfig] = useState({
@@ -197,29 +196,6 @@ export default function ExpressionEditorMenu({
             Cerrar
           </button>
         </div>
-
-        {/* Botón de eliminar solo para expresiones personalizadas */}
-        {reaction &&
-          reaction.name &&
-          !['Default', 'Follower', 'Subscription', 'Bits', 'Payaso'].includes(reaction.name) && (
-            <div className="mt-4 pt-4 border-t border-gray-300">
-              <button
-                className="w-full py-2 px-4 rounded bg-red-500 text-white font-bold hover:bg-red-800 transition-colors"
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      `¿Estás seguro de que quieres eliminar la expresión "${reaction.name}"?`
-                    )
-                  ) {
-                    onDelete(reaction.name)
-                    onClose()
-                  }
-                }}
-              >
-                🗑️ Eliminar Expresión
-              </button>
-            </div>
-          )}
       </div>
     </div>
   )
@@ -229,6 +205,5 @@ ExpressionEditorMenu.propTypes = {
   reaction: PropTypes.object,
   onClose: PropTypes.func.isRequired,
   onConfigChange: PropTypes.func.isRequired,
-  onDelete: PropTypes.func,
   allReactions: PropTypes.array
 }
